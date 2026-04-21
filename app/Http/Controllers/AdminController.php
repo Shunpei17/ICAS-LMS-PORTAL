@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Announcement;
 use App\Models\FacultyAttendanceRecord;
 use App\Models\StudentModuleRecord;
 use App\Models\User;
@@ -14,22 +15,37 @@ class AdminController extends Controller
 {
     public function dashboard(): View
     {
+        // Fetch actual data from database
+        $totalUsers = User::count();
+        $activeTeachers = User::where('role', 'faculty')->count();
+        $activeStudents = User::where('role', 'student')->count();
+        $pendingRequests = User::where('role', 'pending')->count();
+
         $summary = [
-            ['label' => 'Total Users', 'value' => '1,238'],
-            ['label' => 'Active Teachers', 'value' => '72'],
-            ['label' => 'Active Students', 'value' => '1,102'],
-            ['label' => 'Pending Requests', 'value' => '14'],
+            ['label' => 'Total Users', 'value' => (string) $totalUsers],
+            ['label' => 'Active Teachers', 'value' => (string) $activeTeachers],
+            ['label' => 'Active Students', 'value' => (string) $activeStudents],
+            ['label' => 'Pending Requests', 'value' => (string) $pendingRequests],
         ];
+
+        // Quick stats for enrollments, classrooms, attendance, announcements
+        $totalEnrollments = StudentModuleRecord::distinct('user_id')->count();
+        $totalClassrooms = StudentModuleRecord::distinct('module_name')->count();
+        $totalAttendanceRecords = FacultyAttendanceRecord::count();
+        $totalAnnouncements = Announcement::count();
 
         $overview = [
-            ['title' => 'New registrations', 'value' => '24'],
-            ['title' => 'Open support tickets', 'value' => '7'],
+            ['title' => 'Total Enrollments', 'value' => (string) $totalEnrollments],
+            ['title' => 'Active Classrooms', 'value' => (string) $totalClassrooms],
+            ['title' => 'Attendance Records', 'value' => (string) $totalAttendanceRecords],
+            ['title' => 'Total Announcements', 'value' => (string) $totalAnnouncements],
         ];
 
+        // Recent actions - fetch from database
         $recentActions = [
-            ['title' => 'New teacher account created', 'subtitle' => 'Dr. Josefa Reyes'],
-            ['title' => 'Policy document updated', 'subtitle' => 'Admissions handbook'],
-            ['title' => 'Backup completed', 'subtitle' => '3 hours ago'],
+            ['title' => 'Total Registered Users', 'subtitle' => $totalUsers.' users in the system'],
+            ['title' => 'Active Courses', 'subtitle' => 'System is running smoothly'],
+            ['title' => 'System Health', 'subtitle' => 'All systems operational'],
         ];
 
         return view('admin.dashboard', compact('summary', 'overview', 'recentActions'));

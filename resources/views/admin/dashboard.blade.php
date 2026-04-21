@@ -4,7 +4,13 @@
 @section('pageDescription', 'Monitor system health, users, and school analytics.')
 
 @section('content')
-    <div class="space-y-6">
+    <div class="space-y-6 portal-reveal">
+        <!-- Welcome Section -->
+        <div class="rounded-3xl bg-gradient-to-r from-green-500 to-green-600 p-8 shadow-md text-white">
+            <h1 class="text-3xl font-bold mb-2">Welcome back, {{ auth()->user()->name }}! 👋</h1>
+            <p class="text-green-50">Here's a summary of your school's performance and system status.</p>
+        </div>
+
         <!-- Stats Grid -->
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             @foreach($summary as $item)
@@ -25,8 +31,8 @@
             <section class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
                 <div class="flex items-center justify-between gap-4 mb-6">
                     <div>
-                        <h2 class="text-xl font-bold text-slate-900">System Overview</h2>
-                        <p class="text-sm text-slate-500 mt-1">Platform usage and administrative actions.</p>
+                        <h2 class="text-xl font-bold text-slate-900">Quick Stats</h2>
+                        <p class="text-sm text-slate-500 mt-1">Enrollments, classrooms, attendance & announcements.</p>
                     </div>
                 </div>
 
@@ -52,7 +58,7 @@
 
             <!-- Recent Actions -->
             <aside class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
-                <h2 class="text-xl font-bold text-slate-900 mb-6">Recent Actions</h2>
+                <h2 class="text-xl font-bold text-slate-900 mb-6">System Status</h2>
                 <div class="space-y-4">
                     @foreach($recentActions as $action)
                         <div class="group rounded-3xl bg-slate-50 p-4 border border-slate-100 hover:border-green-400 hover:bg-green-50/30 transition-all">
