@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Notifications\ForgotPasswordNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,13 +20,12 @@ class User extends Authenticatable
      *
      * @var list<string>
      */
-  protected $fillable = [
-    'name',
-    'email',
-    'password',
-    'role', // <--- YOU MUST ADD THIS LINE
-
-];
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'role',
+    ];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -51,5 +51,14 @@ class User extends Authenticatable
     {
         return $this->hasMany(StudentModuleRecord::class);
     }
-}
 
+    public function facultyAttendanceRecords(): HasMany
+    {
+        return $this->hasMany(FacultyAttendanceRecord::class, 'faculty_user_id');
+    }
+
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ForgotPasswordNotification($token));
+    }
+}

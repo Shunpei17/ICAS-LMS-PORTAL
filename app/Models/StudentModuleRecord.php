@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StudentModuleRecord extends Model
 {
@@ -19,8 +19,24 @@ class StudentModuleRecord extends Model
         'module_code',
         'instructor',
         'schedule',
-        'description',
+        'grade_percent',
+        'documents_count',
+        'upcoming_assessment_title',
+        'upcoming_assessment_points',
+        'upcoming_assessment_due_date',
+        'upcoming_assessment_duration_minutes',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'grade_percent' => 'decimal:2',
+            'upcoming_assessment_due_date' => 'date',
+        ];
+    }
 
     public function user(): BelongsTo
     {

@@ -13,15 +13,14 @@ return new class extends Migration
     {
         Schema::create('student_module_records', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->string('module_name');
-            $table->string('module_code', 50);
+            $table->string('module_code', 20);
             $table->string('instructor')->nullable();
             $table->string('schedule')->nullable();
-            $table->string('description')->nullable();
             $table->timestamps();
 
-            $table->unique(['user_id', 'module_code']);
+            $table->unique(['user_id', 'module_code'], 'student_module_records_user_module_unique');
         });
     }
 

@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use Illuminate\Auth\Events\PasswordReset;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use App\Models\User;
-use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\View\View;
 
 class AuthController extends Controller
@@ -25,6 +29,67 @@ class AuthController extends Controller
     public function showRegister(): View
     {
         return view('register');
+    }
+
+    public function showForgotPassword(): View
+    {
+        return view('forgot-password');
+    }
+
+    public function showForgotPasswordSent(Request $request): View
+    {
+        $email = (string) $request->session()->get('password_reset_email', '');
+
+        return view('forgot-password-sent', compact('email'));
+    }
+
+    public function sendResetLink(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        Password::sendResetLink($request->only('email'));
+
+        return redirect()
+            ->route('password.sent')
+            ->with('password_reset_email', (string) $request->string('email'));
+    }
+
+    public function showResetPassword(Request $request, string $token): View
+    {
+        return view('reset-password', [
+            'token' => $token,
+            'email' => (string) $request->query('email', ''),
+        ]);
+    }
+
+    public function resetPassword(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'token' => ['required'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'confirmed', PasswordRule::defaults()],
+        ]);
+
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password): void {
+                $user->forceFill([
+                    'password' => $password,
+                ])->setRememberToken(Str::random(60));
+
+                $user->save();
+
+                event(new PasswordReset($user));
+            }
+        );
+
+        return $status === Password::PASSWORD_RESET
+            ? redirect()->route('login')->with('status', __($status))
+            : back()
+                ->withInput($request->only('email'))
+                ->withErrors(['email' => __($status)]);
     }
 
     /**
@@ -59,9 +124,9 @@ class AuthController extends Controller
         $request->merge(['email' => trim($request->email)]);
 
         $credentials = $request->validate([
-            'email'    => ['required', 'email'],
+            'email' => ['required', 'email'],
             'password' => ['required'],
-            'role'     => ['required', 'in:student,faculty,admin']
+            'role' => ['required', 'in:student,faculty,admin'],
         ]);
 
         $selectedRole = $credentials['role'];
@@ -72,13 +137,15 @@ class AuthController extends Controller
 
             if ($user->role !== $selectedRole) {
                 Auth::logout();
+
                 return back()->withErrors([
-                    'email' => "This account is a " . ucfirst($user->role) . ", not a " . ucfirst($selectedRole) . ".",
+                    'email' => 'This account is a '.ucfirst($user->role).', not a '.ucfirst($selectedRole).'.',
                 ])->withInput();
             }
 
             $request->session()->regenerate();
-            return redirect()->intended($selectedRole . '/dashboard');
+
+            return redirect()->intended($selectedRole.'/dashboard');
         }
 
         return back()->withErrors(['email' => 'Invalid email or password.'])->withInput();
@@ -89,6 +156,7 @@ class AuthController extends Controller
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
         return redirect('/login');
     }
 }
