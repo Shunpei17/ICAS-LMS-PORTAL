@@ -101,7 +101,7 @@ class AuthController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'role' => ['required', 'in:student,faculty,admin'],
+            'role' => ['required', 'in:student,faculty'],
         ]);
 
         User::create([
@@ -127,7 +127,7 @@ class AuthController extends Controller
             'email' => ['required', 'email'],
             'password' => ['required'],
             'role' => ['required', 'in:student,faculty,admin'],
-        ]);
+        ]);  // Login accepts admin role, but registration does not
 
         $selectedRole = $credentials['role'];
         unset($credentials['role']);
@@ -145,7 +145,13 @@ class AuthController extends Controller
 
             $request->session()->regenerate();
 
-            return redirect()->intended($selectedRole.'/dashboard');
+            // Role-based redirect after login
+            return match ($selectedRole) {
+                'admin' => redirect()->intended(route('admin.dashboard')),
+                'faculty' => redirect()->intended(route('faculty.dashboard')),
+                'student' => redirect()->intended(route('student.dashboard')),
+                default => redirect()->intended('/'),
+            };
         }
 
         return back()->withErrors(['email' => 'Invalid email or password.'])->withInput();

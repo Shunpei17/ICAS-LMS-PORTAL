@@ -382,7 +382,7 @@
                     <img src="{{ asset('images/icas-logo.png') }}" alt="ICAS Logo" class="mx-auto h-20 w-auto object-contain sm:h-24">
                     <p class="mt-3 text-xs font-bold uppercase tracking-[0.2em] text-white/80">Create Account</p>
                     <h2 class="display-font mt-4 text-2xl font-bold">Register</h2>
-                    <p class="mt-2 text-sm text-white/85">Sign up as a student, faculty, or admin to begin.</p>
+                    <p class="mt-2 text-sm text-white/85">Sign up as a student or faculty member. Admin accounts are created by administrators.</p>
                 </div>
 
                 <div class="mt-5 rounded-2xl bg-white/10 p-4 lg:hidden">
@@ -390,7 +390,7 @@
                     <ul class="mt-3 space-y-2 text-xs text-emerald-50/90">
                         <li class="flex items-start gap-2"><span class="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-300"></span>Enroll modules from one dashboard</li>
                         <li class="flex items-start gap-2"><span class="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-300"></span>Track assessments and attendance</li>
-                        <li class="flex items-start gap-2"><span class="mt-1 h-1.5 w-1.5 rounded-full bg-emerald-300"></span>Role-based access for student, faculty, admin</li>
+                        <li class=\"flex items-start gap-2\"><span class=\"mt-1 h-1.5 w-1.5 rounded-full bg-emerald-300\"></span>Role-based access for student & faculty</li>
                     </ul>
                 </div>
 
@@ -408,7 +408,7 @@
                     @csrf
                     <input type="hidden" name="role" id="selected-role" value="{{ old('role', 'student') }}">
 
-                    <div class="grid grid-cols-3 gap-1 rounded-full bg-black/15 p-1">
+                    <div class="grid grid-cols-2 gap-1 rounded-full bg-black/15 p-1">
                         <button type="button" onclick="setRole('student')" id="btn-student" data-role-btn="student" class="role-btn role-btn-idle inline-flex h-11 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-xs font-bold uppercase tracking-[0.08em] sm:text-sm">
                             <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                             <span>Student</span>
@@ -416,10 +416,6 @@
                         <button type="button" onclick="setRole('faculty')" id="btn-faculty" data-role-btn="faculty" class="role-btn role-btn-idle inline-flex h-11 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-xs font-bold uppercase tracking-[0.08em] sm:text-sm">
                             <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"></path></svg>
                             <span>Faculty</span>
-                        </button>
-                        <button type="button" onclick="setRole('admin')" id="btn-admin" data-role-btn="admin" class="role-btn role-btn-idle inline-flex h-11 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-xs font-bold uppercase tracking-[0.08em] sm:text-sm">
-                            <svg class="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
-                            <span>Admin</span>
                         </button>
                     </div>
 
