@@ -5,24 +5,25 @@ namespace App\Providers;
 use App\Models\Announcement;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
+        // Force HTTPS in production
+        if (config('app.env') === 'production') {
+            URL::forceScheme('https');
+        }
+
+        // View composer for announcements
         View::composer(['layouts.admin', 'layouts.faculty', 'layouts.student'], function ($view): void {
             $newAnnouncementsCount = 0;
 
@@ -39,11 +40,6 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $view->with('newAnnouncementsCount', $newAnnouncementsCount);
-
-        if (config('app.env') === 'production') {
-        URL::forceScheme('https');
-         }
-
         });
     }
 }
