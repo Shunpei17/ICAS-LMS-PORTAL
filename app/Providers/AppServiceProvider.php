@@ -39,6 +39,11 @@ class AppServiceProvider extends ServiceProvider
             }
 
             $view->with('newAnnouncementsCount', $newAnnouncementsCount);
+
+        if (config('app.env') === 'production') {
+        URL::forceScheme('https');
+         }
+
         });
     }
 }
