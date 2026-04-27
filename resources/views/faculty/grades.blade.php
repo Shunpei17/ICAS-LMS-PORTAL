@@ -181,7 +181,7 @@
                             @endforeach
                         </select>
                         <button type="submit" class="rounded-3xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition">Filter</button>
-                        <a href="{{ route('grades.export.csv', ['grade_subject' => $gradeSubjectFilter]) }}" class="rounded-3xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition text-center">Export CSV</a>
+                        <a href="{{ route('faculty.grades.export.csv', ['grade_subject' => $gradeSubjectFilter]) }}" class="rounded-3xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition text-center">Export CSV</a>
                     </form>
                 </div>
 

@@ -107,6 +107,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/schedule', [FacultyController::class, 'schedule'])->name('schedule');
     });
 
+    // NOTE: Removed duplicate global route `grades.export.csv` to prefer
+    // canonical `faculty.grades.export.csv` (the route inside the faculty group).
+
     Route::prefix('admin')->middleware('role:admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/announcements', [AnnouncementController::class, 'manage'])->name('announcements.index');

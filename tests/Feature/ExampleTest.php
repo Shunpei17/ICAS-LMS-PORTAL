@@ -5,5 +5,5 @@ test('the application returns a successful response', function () {
 
     $response
         ->assertSuccessful()
-        ->assertSee('ICAS LMS');
+        ->assertSee('ICAS PHILIPPINES');
 });

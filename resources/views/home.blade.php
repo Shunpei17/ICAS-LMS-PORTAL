@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ICAS LMS | Home</title>
+    <title>ICAS PHILIPPINES | Home</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -206,7 +206,7 @@
         <div class="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
             <a href="{{ route('home') }}" class="inline-flex items-center gap-3">
                 <img src="{{ asset('images/icas-logo.png') }}" alt="ICAS Logo" class="h-12 w-auto object-contain">
-                <span class="display-font text-lg font-bold text-[var(--brand-900)]">ICAS LMS</span>
+                <span class="display-font text-lg font-bold text-[var(--brand-900)]">ICAS PHILIPPINES</span>
             </a>
 
             <nav class="hidden items-center gap-8 text-sm font-semibold text-slate-600 lg:flex">
@@ -269,7 +269,7 @@
 
                 <div class="relative reveal-on-scroll" data-reveal="right" data-reveal-delay="90">
                     <div class="rounded-3xl border border-emerald-200 bg-white/90 p-4 shadow-[0_30px_60px_-35px_rgba(15,79,42,0.45)] backdrop-blur sm:p-5">
-                        <img src="{{ asset('images/building.jpg') }}" alt="ICAS LMS Preview" class="h-64 w-full rounded-2xl object-cover sm:h-80">
+                        <img src="{{ asset('images/building.jpg') }}" alt="ICAS PHILIPPINES Preview" class="h-64 w-full rounded-2xl object-cover sm:h-80">
                         <div class="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-4">
                             <p class="text-xs font-bold uppercase tracking-[0.12em] text-[var(--brand-700)]">Institution Snapshot</p>
                             <ul class="mt-2 space-y-1 text-sm font-semibold text-slate-700">
@@ -289,7 +289,7 @@
                     <p class="text-xs font-bold uppercase tracking-[0.12em] text-[var(--brand-700)]">Portal Access</p>
                     <h2 class="display-font mt-2 text-3xl font-bold text-[var(--brand-900)]">Login and Register are now on separate pages</h2>
                     <p class="mt-3 text-sm leading-relaxed text-slate-600">
-                        Choose Login if you already have an account, or Create Account if you are new to ICAS LMS.
+                        Choose Login if you already have an account, or Create Account if you are new to ICAS PHILIPPINES.
                     </p>
                 </div>
 
@@ -344,7 +344,7 @@
                         <p class="text-xs font-bold uppercase tracking-[0.12em] text-[var(--brand-700)]">Campus Locations</p>
                         <h2 class="display-font mt-2 text-3xl font-bold text-[var(--brand-900)]">Current branches and access points</h2>
                     </div>
-                    <a href="{{ route('register') }}" data-page-transition class="theme-button-primary inline-flex min-h-[44px] items-center rounded-xl bg-[var(--brand-700)] px-5 py-2 text-sm font-bold text-white transition hover:bg-[var(--brand-900)]">Join ICAS LMS</a>
+                    <a href="{{ route('register') }}" data-page-transition class="theme-button-primary inline-flex min-h-[44px] items-center rounded-xl bg-[var(--brand-700)] px-5 py-2 text-sm font-bold text-white transition hover:bg-[var(--brand-900)]">Join ICAS PHILIPPINES</a>
                 </div>
 
                 <div class="mt-6 grid gap-4 lg:grid-cols-3">
