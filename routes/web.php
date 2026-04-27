@@ -5,6 +5,7 @@ use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassroomController;
 use App\Http\Controllers\FacultyController;
+use App\Http\Controllers\GradeController;
 use App\Http\Controllers\StudentController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -87,6 +88,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/students/{slug}', [FacultyController::class, 'subjectShow'])->name('students.show');
         Route::get('/student-details/{id}', [FacultyController::class, 'studentShow'])->name('student.details');
         Route::get('/grades', [FacultyController::class, 'grades'])->name('grades');
+        Route::get('/grades/export-grades', [GradeController::class, 'export'])->name('grades.export.csv');
+        Route::post('/grades/store', [GradeController::class, 'store'])->name('grades.save');
         Route::get('/grades/export', [FacultyController::class, 'exportAttendanceRecords'])->name('grades.export');
         Route::post('/grades/records', [FacultyController::class, 'storeAttendanceRecord'])->name('grades.records.store');
         Route::patch('/grades/records/{attendanceRecord}', [FacultyController::class, 'updateAttendanceRecord'])->name('grades.records.update');

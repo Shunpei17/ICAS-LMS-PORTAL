@@ -26,6 +26,15 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'student_number',
+        'onboarding_source',
+        'enrollment_type',
+        'is_verified',
+        'needs_password_change',
+        'verification_file',
+        'status',
+        'receipt_proof',
+        'student_id_proof'
     ];
 
     /**
@@ -73,5 +82,10 @@ class User extends Authenticatable
     public function sendPasswordResetNotification($token): void
     {
         $this->notify(new ForgotPasswordNotification($token));
+    }
+
+    public function auditTrails(): HasMany
+    {
+        return $this->hasMany(AuditTrail::class);
     }
 }

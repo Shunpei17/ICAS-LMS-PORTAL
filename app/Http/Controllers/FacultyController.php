@@ -284,6 +284,7 @@ class FacultyController extends Controller
 
     public function grades(Request $request): View
     {
+        $tab = $request->query('tab') === 'grades' ? 'grades' : 'attendance';
         $filters = $this->resolveGradesFilters($request);
         $activeFilters = collect($filters)
             ->filter(function (string $value): bool {
@@ -333,7 +334,41 @@ class FacultyController extends Controller
             ->pluck('student_class')
             ->all();
 
-        return view('faculty.grades', compact('summary', 'records', 'filters', 'activeFilters', 'classOptions'));
+        $gradeSubjectFilter = $request->query('grade_subject', '');
+        $gradeSearch = trim((string) $request->query('grade_search', ''));
+
+        $studentsWithGrades = collect();
+        if ($tab === 'grades') {
+            // Get all students enrolled in the faculty's modules, or just all students for simplicity
+            $studentsQuery = \App\Models\User::where('role', 'student');
+            if ($gradeSearch) {
+                $studentsQuery->where('name', 'like', '%' . $gradeSearch . '%');
+            }
+            $students = $studentsQuery->get();
+
+            $gradeQuery = \App\Models\Grade::query();
+            if ($gradeSubjectFilter) {
+                $gradeQuery->where('subject_id', $gradeSubjectFilter);
+            }
+            $existingGrades = $gradeQuery->get()->keyBy('student_id');
+
+            foreach ($students as $student) {
+                $studentsWithGrades->push([
+                    'student_id' => $student->id,
+                    'student_name' => $student->name,
+                    'subject_id' => $gradeSubjectFilter ?: 'MATH301', // Default subject
+                    'quiz' => $existingGrades->has($student->id) ? $existingGrades[$student->id]->quiz : null,
+                    'assignment' => $existingGrades->has($student->id) ? $existingGrades[$student->id]->assignment : null,
+                    'exam' => $existingGrades->has($student->id) ? $existingGrades[$student->id]->exam : null,
+                    'average' => $existingGrades->has($student->id) ? $existingGrades[$student->id]->average : null,
+                    'remarks' => $existingGrades->has($student->id) ? $existingGrades[$student->id]->remarks : null,
+                ]);
+            }
+        }
+
+        $gradeSubjects = ['MATH301', 'PHY201', 'HIST201', 'ENG101'];
+
+        return view('faculty.grades', compact('summary', 'records', 'filters', 'activeFilters', 'classOptions', 'tab', 'studentsWithGrades', 'gradeSubjects', 'gradeSubjectFilter', 'gradeSearch'));
     }
 
     public function storeAttendanceRecord(StoreFacultyAttendanceRecordRequest $request): RedirectResponse
