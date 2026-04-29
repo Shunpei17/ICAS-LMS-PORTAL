@@ -71,7 +71,17 @@
                             <td class="px-5 py-4 text-slate-500 text-xs">{{ $user['joined'] }}</td>
                             <td class="px-5 py-4">
                                 <div class="flex gap-2">
-                                    <button class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition">View</button>
+                                    @if($user['role'] === 'student' && $user['status'] === 'pending')
+                                        @if($user['enrollment_type'] === 'New Student' && $user['receipt_proof'])
+                                            <a href="{{ asset('storage/' . $user['receipt_proof']) }}" target="_blank" class="rounded-lg bg-sky-100 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-200 transition">View Receipt</a>
+                                        @elseif($user['enrollment_type'] === 'Old Student' && $user['student_id_proof'])
+                                            <a href="{{ asset('storage/' . $user['student_id_proof']) }}" target="_blank" class="rounded-lg bg-sky-100 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-200 transition">View ID</a>
+                                        @else
+                                            <span class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-400">No Doc</span>
+                                        @endif
+                                    @else
+                                        <button class="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition">View</button>
+                                    @endif
                                     <button class="rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-200 transition">Edit</button>
                                     @if($user['status']==='active')
                                         <form method="POST" action="{{ route('admin.users.activate', $user['id']) }}" class="inline">

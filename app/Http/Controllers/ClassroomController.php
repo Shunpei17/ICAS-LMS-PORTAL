@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ClassroomStudentsExport;
 use App\Models\Classroom;
 use App\Models\FacultyAttendanceRecord;
 use App\Models\StudentModuleRecord;
@@ -10,6 +11,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ClassroomController extends Controller
 {
@@ -323,6 +326,105 @@ class ClassroomController extends Controller
         ];
 
         return view('admin.classrooms', compact('classrooms', 'summary', 'statusFilter', 'search'));
+    }
+
+    /**
+     * Show classroom detail for admin (student list, search, export).
+     */
+    public function adminShow(Request $request, Classroom $classroom): View
+    {
+        $search = trim((string) $request->query('q', ''));
+
+        $query = $classroom->students()->select('users.*');
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('student_number', 'like', '%'.$search.'%')
+                  ->orWhere('name', 'like', '%'.$search.'%')
+                  ->orWhere('email', 'like', '%'.$search.'%');
+            });
+        }
+
+        $total = $query->count();
+        $students = $query->orderBy('name')->paginate(25)->withQueryString();
+
+        return view('admin.classroom-show', compact('classroom', 'students', 'total', 'search'));
+    }
+
+    /**
+     * Toggle classroom status (active/inactive) for admin.
+     */
+    public function adminToggleStatus(Request $request, Classroom $classroom)
+    {
+        $classroom->status = $classroom->status === 'active' ? 'inactive' : 'active';
+        $classroom->save();
+
+        return response()->json(['status' => $classroom->status]);
+    }
+
+    /**
+     * Assign faculty to a classroom (admin action).
+     */
+    public function adminAssignFaculty(Request $request, Classroom $classroom)
+    {
+        $validated = $request->validate([
+            'faculty_user_id' => ['required', 'exists:users,id'],
+        ]);
+
+        $classroom->faculty_user_id = $validated['faculty_user_id'];
+        $classroom->save();
+
+        return redirect()->route('admin.classrooms')->with('status', 'Faculty assigned.');
+    }
+
+    /**
+     * Export classroom student list. Supports `csv`. For full Excel/PDF support,
+     * install Laravel-Excel or DomPDF and adapt this method.
+     */
+    public function adminExport(Request $request, Classroom $classroom)
+    {
+        if (! auth()->user() || ! auth()->user()->can('manage', $classroom)) {
+            abort(403);
+        }
+        $format = $request->query('format', 'csv');
+        $students = $classroom->students()->orderBy('name')->get();
+
+        if (in_array($format, ['xlsx', 'xls'], true)) {
+            $filename = 'classroom-'.$classroom->code.'-students-'.date('Ymd').'.xlsx';
+            return Excel::download(new ClassroomStudentsExport($students), $filename);
+        }
+
+        if ($format === 'pdf') {
+            $pdf = Pdf::loadView('admin.exports.classroom-students', compact('classroom', 'students'));
+            return $pdf->download('classroom-'.$classroom->code.'-students-'.date('Ymd').'.pdf');
+        }
+
+        // Default to CSV
+        $filename = 'classroom-'.$classroom->code.'-students-'.date('Ymd').'.csv';
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ];
+
+        $callback = function () use ($students) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['Student Number', 'Full Name', 'Academic Level', 'Enrollment Status', 'Email', 'Enrolled At']);
+
+            foreach ($students as $s) {
+                fputcsv($handle, [
+                    $s->student_number ?? '',
+                    $s->name ?? '',
+                    $s->academic_level ?? '',
+                    $s->pivot->enrollment_status ?? '',
+                    $s->email ?? '',
+                    $s->pivot->enrolled_at ?? '',
+                ]);
+            }
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     // ─────────────────────────────────────────────

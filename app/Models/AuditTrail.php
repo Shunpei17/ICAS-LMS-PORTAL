@@ -15,6 +15,7 @@ class AuditTrail extends Model
         'ip_address',
         'user_agent',
         'timestamp',
+        'detail',
     ];
 
     public function user()

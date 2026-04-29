@@ -447,6 +447,41 @@
                             </div>
                             <input type="password" name="password_confirmation" placeholder="Confirm password" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-white outline-none transition" required>
                         </div>
+
+                        <div class="field-wrap relative student-only-field">
+                            <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                            </div>
+                            <select name="enrollment_type" id="enrollment_type" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-slate-800 outline-none transition bg-white/90">
+                                <option value="" disabled {{ !old('enrollment_type') ? 'selected' : '' }}>Select Student Status</option>
+                                <option value="New Student" {{ old('enrollment_type') == 'New Student' ? 'selected' : '' }}>New Student</option>
+                                <option value="Old Student" {{ old('enrollment_type') == 'Old Student' ? 'selected' : '' }}>Old Student</option>
+                            </select>
+                        </div>
+
+                        <div class="field-wrap relative student-only-field">
+                            <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"></path></svg>
+                            </div>
+                            <select name="academic_level" id="academic_level" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-slate-800 outline-none transition bg-white/90">
+                                <option value="" disabled {{ !old('academic_level') ? 'selected' : '' }}>Select Academic Level</option>
+                                <option value="Senior High School" {{ old('academic_level') == 'Senior High School' ? 'selected' : '' }}>Senior High School</option>
+                                <option value="1st Year College" {{ old('academic_level') == '1st Year College' ? 'selected' : '' }}>1st Year College</option>
+                                <option value="2nd Year College" {{ old('academic_level') == '2nd Year College' ? 'selected' : '' }}>2nd Year College</option>
+                                <option value="3rd Year College" {{ old('academic_level') == '3rd Year College' ? 'selected' : '' }}>3rd Year College</option>
+                            </select>
+                        </div>
+
+                        <div class="field-wrap relative student-only-field" id="course_wrap">
+                            <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                            </div>
+                            <select name="course" id="course" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-slate-800 outline-none transition bg-white/90">
+                                <option value="" disabled {{ !old('course') ? 'selected' : '' }}>Select Course</option>
+                                <option value="BSIT" {{ old('course') == 'BSIT' ? 'selected' : '' }}>BSIT</option>
+                                <option value="BSHM" {{ old('course') == 'BSHM' ? 'selected' : '' }}>BSHM</option>
+                            </select>
+                        </div>
                     </div>
 
                     <button type="submit" class="primary-action mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold uppercase tracking-[0.12em] active:scale-[0.99]">
@@ -473,12 +508,60 @@
                 button.classList.toggle('role-btn-active', isActive);
                 button.classList.toggle('role-btn-idle', !isActive);
             });
+
+            const studentFields = document.querySelectorAll('.student-only-field');
+            const academicLevelSelect = document.getElementById('academic_level');
+            const courseSelect = document.getElementById('course');
+            const courseWrap = document.getElementById('course_wrap');
+
+            studentFields.forEach(field => {
+                if (role === 'student') {
+                    field.style.display = 'block';
+                    if (field.id !== 'course_wrap') {
+                        field.querySelector('select').setAttribute('required', 'required');
+                    }
+                } else {
+                    field.style.display = 'none';
+                    field.querySelector('select').removeAttribute('required');
+                }
+            });
+
+            // Re-evaluate course field visibility based on academic level if role is student
+            if (role === 'student' && academicLevelSelect) {
+                if (academicLevelSelect.value === 'Senior High School') {
+                    courseWrap.style.display = 'none';
+                    courseSelect.removeAttribute('required');
+                } else {
+                    courseWrap.style.display = 'block';
+                    courseSelect.setAttribute('required', 'required');
+                }
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function () {
             const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
             const authPanel = document.getElementById('auth-panel');
+            
+            const academicLevelSelect = document.getElementById('academic_level');
+            const courseWrap = document.getElementById('course_wrap');
+            const courseSelect = document.getElementById('course');
+
+            if (academicLevelSelect) {
+                academicLevelSelect.addEventListener('change', function() {
+                    const role = document.getElementById('selected-role').value;
+                    if (role === 'student') {
+                        if (this.value === 'Senior High School') {
+                            courseWrap.style.display = 'none';
+                            courseSelect.removeAttribute('required');
+                            courseSelect.value = '';
+                        } else {
+                            courseWrap.style.display = 'block';
+                            courseSelect.setAttribute('required', 'required');
+                        }
+                    }
+                });
+            }
 
             if (prefersReducedMotion) {
                 document.body.classList.add('page-enter-active');

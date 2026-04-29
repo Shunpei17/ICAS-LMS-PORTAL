@@ -11,6 +11,9 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Maatwebsite\Excel\Facades\Excel;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\AttendanceExport;
 
 class AdminController extends Controller
 {
@@ -47,20 +50,24 @@ class AdminController extends Controller
             ['title' => 'System Health', 'subtitle' => 'All systems operational'],
         ];
 
-        $enrollmentPending = StudentModuleRecord::where('enrollment_status', 'pending')->count();
-        $enrollmentEnrolled = StudentModuleRecord::where('enrollment_status', 'enrolled')->count();
-        $enrollmentDropped = StudentModuleRecord::where('enrollment_status', 'dropped')->count();
-
         $pendingUsersCount = User::where('status', 'pending')->count();
+
+        // Live analytics for dashboard
+        $levelStats = collect(['Senior High School', '1st Year College', '2nd Year College', '3rd Year College'])
+            ->map(fn ($level) => ['label' => $level, 'count' => User::where('role', 'student')->where('academic_level', $level)->count()])
+            ->all();
+
+        $courseStats = collect(['BSIT', 'BSHM'])
+            ->map(fn ($c) => ['label' => $c, 'count' => User::where('role', 'student')->where('course', $c)->count()])
+            ->all();
 
         return view('admin.dashboard', compact(
             'summary',
             'overview',
             'recentActions',
-            'enrollmentPending',
-            'enrollmentEnrolled',
-            'enrollmentDropped',
-            'pendingUsersCount'
+            'pendingUsersCount',
+            'levelStats',
+            'courseStats'
         ));
     }
 
@@ -84,6 +91,9 @@ class AdminController extends Controller
                 'email' => $user->email,
                 'role' => $user->role,
                 'status' => $user->status,
+                'enrollment_type' => $user->enrollment_type,
+                'receipt_proof' => $user->receipt_proof,
+                'student_id_proof' => $user->student_id_proof,
                 'joined' => $user->created_at ? $user->created_at->format('M j, Y') : 'N/A',
             ];
         })->all();
@@ -184,14 +194,67 @@ class AdminController extends Controller
         return view('admin.attendance', compact('summary', 'records', 'filters', 'activeFilters', 'classOptions', 'facultyOptions'));
     }
 
+    public function exportAttendance(Request $request)
+    {
+        $filters = $this->resolveAttendanceFilters($request);
+
+        $baseQuery = $this->queryAttendanceRecords($filters)->orderByDesc('attendance_date')->orderBy('student_name');
+
+        $records = $baseQuery->get()->map(function ($r) {
+            return [
+                'student_name' => $r->student_name,
+                'student_class' => $r->student_class,
+                'faculty' => $r->faculty?->name ?? '',
+                'attendance_date' => $r->attendance_date?->format('Y-m-d') ?? '',
+                'status' => $r->status,
+                'notes' => $r->notes ?? '',
+            ];
+        });
+
+        $format = $request->query('format', 'csv');
+        $filenameBase = 'attendance-'.now()->format('Ymd-His');
+
+        if ($format === 'xlsx') {
+            return Excel::download(new AttendanceExport(collect($records)), $filenameBase.'.xlsx');
+        }
+
+        if ($format === 'pdf') {
+            return Pdf::loadView('admin.exports.attendance', ['records' => $records])->download($filenameBase.'.pdf');
+        }
+
+        $filename = $filenameBase.'.csv';
+        return response()->streamDownload(function () use ($records) {
+            $out = fopen('php://output', 'w');
+            if ($out === false) { return; }
+            fwrite($out, "\xEF\xBB\xBF");
+            fputcsv($out, ['Student Name','Class','Faculty','Date','Status','Notes']);
+            foreach ($records as $row) {
+                fputcsv($out, array_values((array) $row));
+            }
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
     public function grades(Request $request): View
     {
         $subjectFilter = $request->query('subject', '');
+        $academicLevelFilter = $request->query('academic_level', '');
+        $courseFilter = $request->query('course', '');
         
         $coursesData = StudentModuleRecord::query()
             ->whereNotNull('grade_percent')
             ->when($subjectFilter !== '', function ($query) use ($subjectFilter) {
                 return $query->where('module_code', $subjectFilter);
+            })
+            ->when($academicLevelFilter !== '' || $courseFilter !== '', function($query) use ($academicLevelFilter, $courseFilter) {
+                $query->whereHas('user', function($q) use ($academicLevelFilter, $courseFilter) {
+                    if ($academicLevelFilter !== '') {
+                        $q->where('academic_level', $academicLevelFilter);
+                    }
+                    if ($courseFilter !== '') {
+                        $q->where('course', $courseFilter);
+                    }
+                });
             })
             ->get()
             ->groupBy('module_code');
@@ -222,11 +285,27 @@ class AdminController extends Controller
             ];
         }
 
-        $unverifiedGrades = StudentModuleRecord::query()
-            ->with('user:id,name')
+        $allGradesQuery = StudentModuleRecord::query()
+            ->with(['user:id,name,academic_level,course'])
             ->whereNotNull('grade_percent')
-            ->where('grade_verified', false)
-            ->get();
+            ->when($subjectFilter !== '', function ($query) use ($subjectFilter) {
+                return $query->where('module_code', $subjectFilter);
+            })
+            ->when($academicLevelFilter !== '' || $courseFilter !== '', function($query) use ($academicLevelFilter, $courseFilter) {
+                $query->whereHas('user', function($q) use ($academicLevelFilter, $courseFilter) {
+                    if ($academicLevelFilter !== '') {
+                        $q->where('academic_level', $academicLevelFilter);
+                    }
+                    if ($courseFilter !== '') {
+                        $q->where('course', $courseFilter);
+                    }
+                });
+            });
+
+        // Unverified grades for the unverified section
+        $unverifiedGrades = (clone $allGradesQuery)->where('grade_verified', false)->get();
+        // All grades for the admin override table
+        $allGrades = $allGradesQuery->paginate(15)->withQueryString();
 
         $subjectOptions = StudentModuleRecord::query()
             ->select('module_code', 'module_name')
@@ -236,7 +315,7 @@ class AdminController extends Controller
             ->map(fn ($r) => ['code' => $r->module_code, 'name' => $r->module_name])
             ->all();
 
-        return view('admin.grades', compact('courses', 'unverifiedGrades', 'subjectFilter', 'subjectOptions'));
+        return view('admin.grades', compact('courses', 'unverifiedGrades', 'allGrades', 'subjectFilter', 'subjectOptions', 'academicLevelFilter', 'courseFilter'));
     }
 
     public function verifyGrade(StudentModuleRecord $moduleRecord): RedirectResponse
@@ -248,10 +327,24 @@ class AdminController extends Controller
     public function exportGrades(Request $request): StreamedResponse
     {
         $subjectFilter = $request->query('subject');
+        $academicLevelFilter = $request->query('academic_level');
+        $courseFilter = $request->query('course');
+        
         $records = StudentModuleRecord::query()
-            ->with(['user:id,name,email'])
+            ->with(['user:id,name,email,academic_level,course'])
+            ->whereNotNull('grade_percent')
             ->when($subjectFilter, function ($query, $subjectFilter) {
                 return $query->where('module_code', $subjectFilter);
+            })
+            ->when($academicLevelFilter !== '' || $courseFilter !== '', function($query) use ($academicLevelFilter, $courseFilter) {
+                $query->whereHas('user', function($q) use ($academicLevelFilter, $courseFilter) {
+                    if ($academicLevelFilter !== null && $academicLevelFilter !== '') {
+                        $q->where('academic_level', $academicLevelFilter);
+                    }
+                    if ($courseFilter !== null && $courseFilter !== '') {
+                        $q->where('course', $courseFilter);
+                    }
+                });
             })
             ->orderBy('module_name')
             ->orderBy('module_code')
@@ -267,22 +360,65 @@ class AdminController extends Controller
             }
 
             fwrite($output, "\xEF\xBB\xBF");
-            fputcsv($output, ['Student Name', 'Student Email', 'Module Name', 'Module Code', 'Instructor', 'Schedule', 'Grade Percent']);
+            fputcsv($output, ['Student Name', 'Student Email', 'Academic Level', 'Course', 'Module Name', 'Module Code', 'Instructor', 'Raw Grade', 'GPA Equivalent']);
 
             foreach ($records as $record) {
+                $raw = (float) $record->grade_percent;
+                $gpa = 'Dropped';
+                if ($raw >= 99) $gpa = '1.00';
+                elseif ($raw >= 96) $gpa = '1.25';
+                elseif ($raw >= 93) $gpa = '1.50';
+                elseif ($raw >= 90) $gpa = '1.75';
+                elseif ($raw >= 87) $gpa = '2.00';
+                elseif ($raw >= 84) $gpa = '2.25';
+                elseif ($raw >= 81) $gpa = '2.50';
+                elseif ($raw >= 78) $gpa = '2.75';
+                elseif ($raw >= 75) $gpa = '3.00';
+                elseif ($raw >= 51) $gpa = '5.00';
+
                 fputcsv($output, [
                     $record->user?->name ?? 'Unknown Student',
                     $record->user?->email ?? '',
+                    $record->user?->academic_level ?? '',
+                    $record->user?->course ?? '',
                     $record->module_name,
                     $record->module_code,
                     $record->instructor ?? '',
-                    $record->schedule ?? '',
-                    $record->grade_percent !== null ? number_format((float) $record->grade_percent, 2) : '',
+                    $raw,
+                    $gpa,
                 ]);
             }
 
             fclose($output);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function updateGrade(Request $request, StudentModuleRecord $moduleRecord): RedirectResponse
+    {
+        $validated = $request->validate([
+            'grade_percent' => 'required|numeric|min:0|max:100',
+            'reason' => 'required|string|max:500',
+        ]);
+
+        $oldGrade = $moduleRecord->grade_percent;
+        $newGrade = $validated['grade_percent'];
+        $reason = $validated['reason'];
+
+        $moduleRecord->update([
+            'grade_percent' => $newGrade,
+            'grade_verified' => true,
+        ]);
+
+        \App\Models\AuditTrail::create([
+            'user_id' => auth()->id(),
+            'action' => 'Update Grade',
+            'module' => 'Grades',
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'detail' => "Admin " . auth()->user()->name . " manually changed grade for " . ($moduleRecord->user->name ?? 'Student') . " in " . $moduleRecord->module_name . " from {$oldGrade} to {$newGrade}. Reason: {$reason}",
+        ]);
+
+        return back()->with('status', 'Grade updated and logged successfully.');
     }
 
 
@@ -354,6 +490,8 @@ class AdminController extends Controller
         }
 
         $facultyUserId = trim((string) $request->query('faculty_user_id', ''));
+        $academicLevel = trim((string) $request->query('academic_level', ''));
+        $course = trim((string) $request->query('course', ''));
 
         if ($facultyUserId !== '' && ! ctype_digit($facultyUserId)) {
             $facultyUserId = '';
@@ -364,6 +502,8 @@ class AdminController extends Controller
             'status' => $status,
             'student_class' => trim((string) $request->query('student_class', '')),
             'faculty_user_id' => $facultyUserId,
+            'academic_level' => $academicLevel,
+            'course' => $course,
             'from_date' => trim((string) $request->query('from_date', '')),
             'to_date' => trim((string) $request->query('to_date', '')),
         ];
@@ -377,6 +517,26 @@ class AdminController extends Controller
         return FacultyAttendanceRecord::query()
             ->when($filters['search'] !== '', function (Builder $query) use ($filters): void {
                 $query->where('student_name', 'like', '%'.$filters['search'].'%');
+            })
+            ->when($filters['academic_level'] !== '', function (Builder $query) use ($filters): void {
+                $level = $filters['academic_level'];
+                $query->whereExists(function ($q) use ($level) {
+                    $q->select(DB::raw(1))
+                      ->from('users')
+                      ->whereColumn('users.name', 'faculty_attendance_records.student_name')
+                      ->where('users.role', 'student')
+                      ->where('users.academic_level', $level);
+                });
+            })
+            ->when($filters['course'] !== '', function (Builder $query) use ($filters): void {
+                $course = $filters['course'];
+                $query->whereExists(function ($q) use ($course) {
+                    $q->select(DB::raw(1))
+                      ->from('users')
+                      ->whereColumn('users.name', 'faculty_attendance_records.student_name')
+                      ->where('users.role', 'student')
+                      ->where('users.course', $course);
+                });
             })
             ->when($filters['status'] !== '', function (Builder $query) use ($filters): void {
                 $query->where('status', $filters['status']);
@@ -447,7 +607,24 @@ class AdminController extends Controller
             ])
             ->all();
 
-        return view('admin.enrollments', compact('enrollments', 'summary', 'tab', 'courseFilter', 'courseOptions'));
+        // Real-time analytics: students by academic level
+        $levelStats = collect([
+            'Senior High School',
+            '1st Year College',
+            '2nd Year College',
+            '3rd Year College',
+        ])->map(fn ($level) => [
+            'label' => $level,
+            'count' => User::where('role', 'student')->where('academic_level', $level)->count(),
+        ])->all();
+
+        // Real-time analytics: students by course
+        $courseStats = collect(['BSIT', 'BSHM'])->map(fn ($c) => [
+            'label' => $c,
+            'count' => User::where('role', 'student')->where('course', $c)->count(),
+        ])->all();
+
+        return view('admin.enrollments', compact('enrollments', 'summary', 'tab', 'courseFilter', 'courseOptions', 'levelStats', 'courseStats'));
     }
 
     public function approveEnrollment(StudentModuleRecord $moduleRecord): RedirectResponse

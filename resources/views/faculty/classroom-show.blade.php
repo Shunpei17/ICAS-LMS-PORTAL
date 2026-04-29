@@ -36,11 +36,21 @@
                         <p class="mt-2 text-green-100 text-sm max-w-lg">{{ $classroom->description }}</p>
                     @endif
                 </div>
-                <a href="{{ route('faculty.classrooms.edit', $classroom->id) }}"
-                   class="rounded-2xl bg-white/20 hover:bg-white/30 px-4 py-2 text-sm font-semibold text-white transition flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
-                    Edit
-                </a>
+                <div class="flex items-center gap-3">
+                    <a href="{{ route('faculty.classrooms.edit', $classroom->id) }}"
+                       class="rounded-2xl bg-white/20 hover:bg-white/30 px-4 py-2 text-sm font-semibold text-white transition flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        Edit
+                    </a>
+                    <div class="relative">
+                        <button id="classroom-export-toggle" type="button" class="rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">Export ▾</button>
+                        <div id="classroom-export-menu" class="hidden absolute right-0 mt-2 w-40 rounded-xl bg-white border border-slate-100 shadow-lg z-50">
+                            <a href="{{ route('faculty.classrooms.export', $classroom->id) }}?format=csv" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download CSV</a>
+                            <a href="{{ route('faculty.classrooms.export', $classroom->id) }}?format=xlsx" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download Excel</a>
+                            <a href="{{ route('faculty.classrooms.export', $classroom->id) }}?format=pdf" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download PDF</a>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -172,4 +182,19 @@
             </div>
         </div>
     </div>
+    <script>
+        (function(){
+            var toggle = document.getElementById('classroom-export-toggle');
+            var menu = document.getElementById('classroom-export-menu');
+            document.addEventListener('click', function(e){
+                if(toggle && toggle.contains(e.target)){
+                    menu.classList.toggle('hidden');
+                    return;
+                }
+                if(menu && !menu.contains(e.target)){
+                    menu.classList.add('hidden');
+                }
+            });
+        })();
+    </script>
 @endsection

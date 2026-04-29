@@ -13,7 +13,21 @@ class StoreStudentModuleRecordRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user() !== null && $this->user()->role === 'student';
+        if ($this->user() === null || $this->user()->role !== 'student') {
+            return false;
+        }
+
+        $moduleCode = $this->input('module_code');
+        if (! $moduleCode) {
+            return true;
+        }
+
+        $classroom = \App\Models\Classroom::where('code', $moduleCode)->first();
+        if ($classroom !== null && $classroom->status !== 'active') {
+            return false;
+        }
+
+        return true;
     }
 
     /**

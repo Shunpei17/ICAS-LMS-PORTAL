@@ -11,6 +11,7 @@ class GradeController extends Controller
     public function store(Request $request)
     {
         $gradesData = $request->input('grades', []);
+        $skipped = [];
 
         foreach ($gradesData as $data) {
             if (empty($data['student_id']) || empty($data['subject_id'])) continue;
@@ -18,6 +19,16 @@ class GradeController extends Controller
             $quiz = $data['quiz'] ?? 0;
             $assignment = $data['assignment'] ?? 0;
             $exam = $data['exam'] ?? 0;
+
+            // Skip if subject maps to an inactive classroom
+            $classroom = \App\Models\Classroom::where('code', $data['subject_id'])->first();
+            if ($classroom !== null) {
+                // Use policy to ensure user can manage this classroom (and it's active)
+                if (! auth()->user()->can('manage', $classroom)) {
+                    $skipped[] = $data['subject_id'];
+                    continue;
+                }
+            }
 
             // Compute
             // Quiz (30%), Assignment (30%), Exam (40%)
@@ -39,7 +50,12 @@ class GradeController extends Controller
             );
         }
 
-        return redirect()->back()->with('status', 'Grades saved successfully!');
+        $message = 'Grades saved successfully!';
+        if (count($skipped) > 0) {
+            $message = 'Some grades were skipped because their classroom is inactive: '.implode(', ', array_unique($skipped));
+        }
+
+        return redirect()->back()->with('status', $message);
     }
 
     public function export(Request $request): StreamedResponse

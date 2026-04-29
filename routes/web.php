@@ -71,7 +71,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('/modules/records/{moduleRecord}', [StudentController::class, 'deleteModuleRecord'])->name('modules.records.destroy');
         Route::get('/grades', [StudentController::class, 'grades'])->name('grades');
         Route::get('/classrooms', [ClassroomController::class, 'studentIndex'])->name('classrooms');
-        Route::post('/classrooms/{classroom}/enroll', [ClassroomController::class, 'studentEnroll'])->name('classrooms.enroll');
+        Route::post('/classrooms/{classroom}/enroll', [ClassroomController::class, 'studentEnroll'])->middleware('classroom.active')->name('classrooms.enroll');
         Route::get('/attendance', [StudentController::class, 'attendance'])->name('attendance');
         Route::get('/documents', [StudentController::class, 'documents'])->name('documents');
         Route::get('/forum', [StudentController::class, 'forum'])->name('forum');
@@ -91,7 +91,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/grades/export-grades', [GradeController::class, 'export'])->name('grades.export.csv');
         Route::post('/grades/store', [GradeController::class, 'store'])->name('grades.save');
         Route::get('/grades/export', [FacultyController::class, 'exportAttendanceRecords'])->name('grades.export');
-        Route::post('/grades/records', [FacultyController::class, 'storeAttendanceRecord'])->name('grades.records.store');
+        Route::post('/grades/records', [FacultyController::class, 'storeAttendanceRecord'])->middleware('classroom.active')->name('grades.records.store');
         Route::patch('/grades/records/{attendanceRecord}', [FacultyController::class, 'updateAttendanceRecord'])->name('grades.records.update');
         Route::get('/enrollments', [FacultyController::class, 'enrollments'])->name('enrollments');
         Route::patch('/enrollments/{moduleRecord}/approve', [FacultyController::class, 'approveEnrollment'])->name('enrollments.approve');
@@ -104,6 +104,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/classrooms/{classroom}', [ClassroomController::class, 'facultyShow'])->name('classrooms.show');
         Route::get('/forum', [FacultyController::class, 'forum'])->name('forum');
         Route::get('/profile', [FacultyController::class, 'profile'])->name('profile');
+        // Export classroom students (faculty)
+        Route::get('/classrooms/{classroom}/export', [ClassroomController::class, 'adminExport'])->name('faculty.classrooms.export');
         Route::get('/schedule', [FacultyController::class, 'schedule'])->name('schedule');
     });
 
@@ -114,14 +116,20 @@ Route::middleware('auth')->group(function () {
         Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
         Route::get('/announcements', [AnnouncementController::class, 'manage'])->name('announcements.index');
         Route::get('/attendance', [AdminController::class, 'attendance'])->name('attendance');
+        Route::get('/attendance/export', [AdminController::class, 'exportAttendance'])->name('attendance.export');
         Route::get('/grades', [AdminController::class, 'grades'])->name('grades');
         Route::patch('/grades/{moduleRecord}/verify', [AdminController::class, 'verifyGrade'])->name('grades.verify');
+        Route::patch('/grades/{moduleRecord}/update', [AdminController::class, 'updateGrade'])->name('grades.update');
         Route::get('/grades/generator', [AdminController::class, 'exportGrades'])->name('grades.export');
         Route::get('/enrollments', [AdminController::class, 'enrollments'])->name('enrollments');
         Route::patch('/enrollments/{moduleRecord}/approve', [AdminController::class, 'approveEnrollment'])->name('enrollments.approve');
         Route::patch('/enrollments/{moduleRecord}/section', [AdminController::class, 'assignSection'])->name('enrollments.section');
         Route::patch('/enrollments/{moduleRecord}/encode', [AdminController::class, 'encodeCourse'])->name('enrollments.encode');
         Route::get('/classrooms', [ClassroomController::class, 'adminIndex'])->name('classrooms');
+        Route::get('/classrooms/{classroom}', [ClassroomController::class, 'adminShow'])->name('classrooms.show');
+        Route::patch('/classrooms/{classroom}/status', [ClassroomController::class, 'adminToggleStatus'])->name('classrooms.status');
+        Route::post('/classrooms/{classroom}/assign-faculty', [ClassroomController::class, 'adminAssignFaculty'])->name('classrooms.assign-faculty');
+        Route::get('/classrooms/{classroom}/export', [ClassroomController::class, 'adminExport'])->name('classrooms.export');
         Route::get('/documents', [AdminController::class, 'documents'])->name('documents');
         Route::patch('/documents/{documentRequest}', [AdminController::class, 'updateDocument'])->name('documents.update');
         Route::get('/forum', [AdminController::class, 'forum'])->name('forum');

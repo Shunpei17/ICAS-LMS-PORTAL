@@ -44,6 +44,20 @@
                         @endforeach
                     </select>
 
+                    <select name="academic_level" class="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none">
+                        <option value="" @selected(($filters['academic_level'] ?? '') === '')>All Levels</option>
+                        <option value="Senior High School" @selected(($filters['academic_level'] ?? '') === 'Senior High School')>Senior High School</option>
+                        <option value="1st Year College" @selected(($filters['academic_level'] ?? '') === '1st Year College')>1st Year College</option>
+                        <option value="2nd Year College" @selected(($filters['academic_level'] ?? '') === '2nd Year College')>2nd Year College</option>
+                        <option value="3rd Year College" @selected(($filters['academic_level'] ?? '') === '3rd Year College')>3rd Year College</option>
+                    </select>
+
+                    <select name="course" class="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none">
+                        <option value="" @selected(($filters['course'] ?? '') === '')>All Courses</option>
+                        <option value="BSIT" @selected(($filters['course'] ?? '') === 'BSIT')>BSIT</option>
+                        <option value="BSHM" @selected(($filters['course'] ?? '') === 'BSHM')>BSHM</option>
+                    </select>
+
                     <select name="faculty_user_id" class="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none">
                         <option value="" @selected($filters['faculty_user_id'] === '')>All Faculty</option>
                         @foreach($facultyOptions as $facultyOption)
@@ -60,10 +74,27 @@
                         class="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none"
                     />
 
+                    <label class="inline-flex items-center">
+                        <input type="checkbox" name="update_if_exists" value="1" class="mr-2" />
+                        <span class="text-sm text-slate-700">Update existing if found</span>
+                    </label>
+
                     <button type="submit" class="rounded-3xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">Filter</button>
                     @if(!empty($activeFilters))
                         <a href="{{ route('admin.attendance') }}" class="rounded-3xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Clear</a>
                     @endif
+                </form>
+
+                <div class="flex items-center gap-3 mt-4 xl:mt-0">
+                    <div class="relative inline-block text-left">
+                        <button id="attendance-export-toggle" type="button" class="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">Export ▾</button>
+                        <div id="attendance-export-menu" class="hidden absolute right-0 mt-2 w-40 rounded-xl bg-white border border-slate-100 shadow-lg z-50">
+                            <a href="{{ route('admin.attendance.export') }}?format=csv" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download CSV</a>
+                            <a href="{{ route('admin.attendance.export') }}?format=xlsx" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download Excel</a>
+                            <a href="{{ route('admin.attendance.export') }}?format=pdf" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download PDF</a>
+                        </div>
+                    </div>
+                </div>
                 </form>
             </div>
 
@@ -112,4 +143,19 @@
             @endif
         </div>
     </div>
+    <script>
+        (function(){
+            var toggle = document.getElementById('attendance-export-toggle');
+            var menu = document.getElementById('attendance-export-menu');
+            document.addEventListener('click', function(e){
+                if(toggle && toggle.contains(e.target)){
+                    menu.classList.toggle('hidden');
+                    return;
+                }
+                if(menu && !menu.contains(e.target)){
+                    menu.classList.add('hidden');
+                }
+            });
+        })();
+    </script>
 @endsection

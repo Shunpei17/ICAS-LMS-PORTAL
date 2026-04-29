@@ -12,7 +12,21 @@ class StoreFacultyAttendanceRecordRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user() !== null && $this->user()->role === 'faculty';
+        if ($this->user() === null || $this->user()->role !== 'faculty') {
+            return false;
+        }
+
+        $classCode = $this->input('student_class');
+        if (! $classCode) {
+            return true;
+        }
+
+        $classroom = \App\Models\Classroom::where('code', $classCode)->first();
+        if ($classroom !== null && $classroom->status !== 'active') {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -27,6 +41,8 @@ class StoreFacultyAttendanceRecordRequest extends FormRequest
             'student_class' => ['required', 'string', 'max:50'],
             'attendance_date' => ['required', 'date'],
             'status' => ['required', 'in:Present,Absent,Late'],
+            // optional flag: if true, update existing record instead of blocking
+            'update_if_exists' => ['sometimes', 'boolean'],
         ];
     }
 

@@ -111,6 +111,11 @@
                         <option value="Absent" @selected(old('status') === 'Absent')>Absent</option>
                         <option value="Late" @selected(old('status') === 'Late')>Late</option>
                     </select>
+                    <label class="inline-flex items-center mr-3">
+                        <input type="checkbox" name="update_if_exists" value="1" class="mr-2" />
+                        <span class="text-sm text-slate-700">Update existing if found</span>
+                    </label>
+
                     <button type="submit" class="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition">
                         Register Record
                     </button>
@@ -181,7 +186,14 @@
                             @endforeach
                         </select>
                         <button type="submit" class="rounded-3xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition">Filter</button>
-                        <a href="{{ route('faculty.grades.export.csv', ['grade_subject' => $gradeSubjectFilter]) }}" class="rounded-3xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition text-center">Export CSV</a>
+                        @php
+                            try {
+                                $exportCsvUrl = route('faculty.grades.export.csv', ['grade_subject' => $gradeSubjectFilter]);
+                            } catch (\Exception $e) {
+                                $exportCsvUrl = url('faculty/grades/export-grades') . ($gradeSubjectFilter ? '?grade_subject=' . urlencode($gradeSubjectFilter) : '');
+                            }
+                        @endphp
+                        <a href="{{ $exportCsvUrl }}" class="rounded-3xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700 transition text-center">Export CSV</a>
                     </form>
                 </div>
 

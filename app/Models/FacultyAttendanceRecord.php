@@ -17,11 +17,17 @@ class FacultyAttendanceRecord extends Model
      */
     protected $fillable = [
         'faculty_user_id',
+        'student_user_id',
         'student_name',
         'student_class',
         'attendance_date',
         'status',
     ];
+
+    public function studentUser()
+    {
+        return $this->belongsTo(User::class, 'student_user_id');
+    }
 
     /**
      * @return array<string, string>

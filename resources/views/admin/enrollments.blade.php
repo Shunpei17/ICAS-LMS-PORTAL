@@ -1,7 +1,7 @@
 @extends('layouts.admin')
 
-@section('title', 'Enrollments')
-@section('pageDescription', 'Manage student enrollment requests, approve and assign sections.')
+@section('title', 'Manage Enrollment per Subject')
+@section('pageDescription', 'Review and manage student subject enrollment requests per academic level and course.')
 
 @section('content')
     <div class="space-y-6">
@@ -11,6 +11,53 @@
                 <p class="text-sm font-medium text-emerald-800">{{ session('status') }}</p>
             </div>
         @endif
+
+        {{-- Real-Time Analytics: Students per Academic Level & Course --}}
+        <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-6">
+            <div class="flex items-center justify-between gap-4 mb-5">
+                <div>
+                    <h2 class="text-lg font-bold text-slate-900">Student Analytics</h2>
+                    <p class="text-xs text-slate-500 mt-0.5">Real-time breakdown by academic level and course.</p>
+                </div>
+                <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live
+                </span>
+            </div>
+
+            <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                @foreach($levelStats as $stat)
+                    @php
+                        $colors = match(true) {
+                            str_contains($stat['label'], 'Senior') => ['bg' => 'bg-violet-50', 'border' => 'border-violet-200', 'val' => 'text-violet-700', 'dot' => 'bg-violet-500'],
+                            str_contains($stat['label'], '1st')    => ['bg' => 'bg-sky-50',    'border' => 'border-sky-200',    'val' => 'text-sky-700',    'dot' => 'bg-sky-500'],
+                            str_contains($stat['label'], '2nd')    => ['bg' => 'bg-amber-50',  'border' => 'border-amber-200',  'val' => 'text-amber-700',  'dot' => 'bg-amber-500'],
+                            default                                 => ['bg' => 'bg-emerald-50','border' => 'border-emerald-200','val' => 'text-emerald-700','dot' => 'bg-emerald-500'],
+                        };
+                    @endphp
+                    <div class="rounded-2xl {{ $colors['bg'] }} border {{ $colors['border'] }} p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="w-2 h-2 rounded-full {{ $colors['dot'] }}"></span>
+                            <p class="text-xs font-semibold text-slate-600 uppercase tracking-wide">{{ $stat['label'] }}</p>
+                        </div>
+                        <p class="text-3xl font-black {{ $colors['val'] }}">{{ $stat['count'] }}</p>
+                        <p class="text-xs text-slate-500 mt-1">students</p>
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- Course Breakdown --}}
+            <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                @foreach($courseStats as $cs)
+                    <div class="rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ $cs['label'] }}</p>
+                            <p class="text-2xl font-bold text-slate-900 mt-0.5">{{ $cs['count'] }}</p>
+                        </div>
+                        <span class="rounded-xl bg-green-100 text-green-700 px-3 py-1 text-xs font-bold">{{ $cs['label'] }}</span>
+                    </div>
+                @endforeach
+            </div>
+        </section>
 
         {{-- Summary Cards --}}
         <div class="grid gap-4 sm:grid-cols-3">
@@ -49,7 +96,7 @@
                     </h2>
                     <p class="text-sm text-slate-500 mt-1">
                         @if($tab === 'pending') Review and approve incoming enrollment requests.
-                        @elseif($tab === 'enrolled') View enrolled students — assign sections or encode course details.
+                        @elseif($tab === 'enrolled') View enrolled students and encode course details.
                         @else View dropped enrollment records.
                         @endif
                     </p>
@@ -106,6 +153,17 @@
                                 <div>
                                     <p class="text-sm font-bold text-slate-900">{{ $enrollment->user->name ?? 'Unknown' }}</p>
                                     <p class="text-xs text-slate-500">{{ $enrollment->user->email ?? '' }}</p>
+                                    {{-- Course & Year Level --}}
+                                    @if($enrollment->user?->course || $enrollment->user?->academic_level)
+                                        <p class="mt-0.5 text-xs text-slate-600">
+                                            @if($enrollment->user?->course)
+                                                <span class="inline-flex rounded bg-green-100 text-green-700 px-1.5 py-0.5 font-semibold">{{ $enrollment->user->course }}</span>
+                                            @endif
+                                            @if($enrollment->user?->academic_level)
+                                                <span class="ml-1 text-slate-500">{{ $enrollment->user->academic_level }}</span>
+                                            @endif
+                                        </p>
+                                    @endif
                                     <p class="mt-1 text-xs text-slate-600">
                                         <span class="font-semibold">{{ $enrollment->module_name }}</span>
                                         <span class="text-slate-400 mx-1">·</span>
@@ -113,9 +171,6 @@
                                     </p>
                                     @if($enrollment->instructor)
                                         <p class="text-xs text-slate-500 mt-0.5">{{ $enrollment->instructor }}</p>
-                                    @endif
-                                    @if($enrollment->section)
-                                        <span class="mt-1.5 inline-flex rounded-md bg-sky-100 px-2 py-0.5 text-xs text-sky-700 font-semibold">Section: {{ $enrollment->section }}</span>
                                     @endif
                                     <p class="text-xs text-slate-400 mt-1">Applied {{ $enrollment->created_at?->diffForHumans() }}</p>
                                 </div>
@@ -133,27 +188,9 @@
                                             ✓ Approve
                                         </button>
                                     </form>
-                                    <form method="POST" action="{{ route('admin.enrollments.section', $enrollment) }}" class="flex items-center gap-2">
-                                        @csrf
-                                        @method('PATCH')
-                                        <input type="hidden" name="tab" value="{{ $tab }}">
-                                        <input type="text" name="section" placeholder="Section (e.g. A)" required
-                                               class="w-28 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-400">
-                                        <button class="rounded-xl bg-slate-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 transition">Assign</button>
-                                    </form>
                                 @endif
 
                                 @if($tab === 'enrolled')
-                                    @if(!$enrollment->section)
-                                        <form method="POST" action="{{ route('admin.enrollments.section', $enrollment) }}" class="flex items-center gap-2">
-                                            @csrf
-                                            @method('PATCH')
-                                            <input type="hidden" name="tab" value="{{ $tab }}">
-                                            <input type="text" name="section" placeholder="Assign section" required
-                                                   class="w-32 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-green-400">
-                                            <button class="rounded-xl bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-700 transition">Assign Section</button>
-                                        </form>
-                                    @endif
                                     <button @click="showEncode = !showEncode"
                                             class="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition">
                                         ✏️ Encode Course

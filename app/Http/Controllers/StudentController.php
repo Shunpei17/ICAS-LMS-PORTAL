@@ -21,8 +21,8 @@ class StudentController extends Controller
             'email' => $user->email ?? 'student@example.com',
             'phone' => '+63 912 345 6789',
             'address' => '123 University Ave, Manila, Philippines',
-            'program' => 'Bachelor of Science in Information Technology',
-            'year_level' => '3rd Year',
+            'program' => $user->course ?? 'Not Specified',
+            'year_level' => $user->academic_level ?? 'Not Specified',
             'status' => 'Regular',
             'emergency_contact' => ['name' => 'Jane Doe', 'relation' => 'Mother', 'phone' => '+63 998 765 4321']
         ];

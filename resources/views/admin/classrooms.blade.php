@@ -64,7 +64,7 @@
                             @foreach($classrooms as $room)
                                 <tr class="hover:bg-slate-50 transition-colors">
                                     <td class="px-5 py-4">
-                                        <p class="font-bold text-slate-900">{{ $room['name'] }}</p>
+                                        <p class="font-bold text-slate-900"><a href="{{ route('admin.classrooms.show', $room['id']) }}" class="hover:underline">{{ $room['name'] }}</a></p>
                                         <p class="text-xs font-mono text-slate-400 mt-0.5">{{ $room['code'] }}</p>
                                     </td>
                                     <td class="px-5 py-4">
@@ -97,6 +97,22 @@
                                             {{ ucfirst($room['status']) }}
                                         </span>
                                     </td>
+                                    <td class="px-5 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-2">
+                                            <button data-id="{{ $room['id'] }}" data-status="{{ $room['status'] }}" class="toggle-status rounded-md bg-slate-100 px-3 py-1 text-xs">Toggle</button>
+                                            <button data-id="{{ $room['id'] }}" data-name="{{ $room['name'] }}" class="assign-faculty rounded-md bg-sky-600 text-white px-3 py-1 text-xs">Assign</button>
+                                            <div class="relative inline-block text-left">
+                                                <button type="button" class="export-btn rounded-md bg-emerald-600 text-white px-3 py-1 text-xs">Export ▾</button>
+                                                <div class="export-menu hidden absolute right-0 mt-2 w-36 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+                                                    <div class="py-1">
+                                                        <a href="{{ route('admin.classrooms.export', $room['id']) }}?format=csv" class="block px-3 py-2 text-xs text-slate-700 hover:bg-slate-50">CSV</a>
+                                                        <a href="{{ route('admin.classrooms.export', $room['id']) }}?format=xlsx" class="block px-3 py-2 text-xs text-slate-700 hover:bg-slate-50">Excel</a>
+                                                        <a href="{{ route('admin.classrooms.export', $room['id']) }}?format=pdf" class="block px-3 py-2 text-xs text-slate-700 hover:bg-slate-50">PDF</a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
@@ -112,5 +128,77 @@
                 </div>
             @endif
         </section>
+        
+        {{-- Assign Faculty Modal (hidden) --}}
+        <div id="assignModal" class="hidden fixed inset-0 z-50 grid place-items-center bg-black/40">
+            <div class="bg-white rounded-2xl p-6 w-96">
+                <h3 class="text-lg font-bold mb-3">Assign Faculty to <span id="modalClassName" class="font-semibold"></span></h3>
+                <form id="assignForm" method="POST" action="">
+                    @csrf
+                    <div class="mb-3">
+                        <label class="block text-sm text-slate-700 mb-1">Faculty</label>
+                        <select name="faculty_user_id" required class="w-full rounded border px-3 py-2 text-sm">
+                            <option value="">Select faculty…</option>
+                            @foreach(\App\Models\User::where('role', 'faculty')->orderBy('name')->get() as $f)
+                                <option value="{{ $f->id }}">{{ $f->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex justify-end gap-2">
+                        <button type="button" id="assignCancel" class="rounded border px-4 py-2 text-sm">Cancel</button>
+                        <button type="submit" class="rounded bg-green-600 text-white px-4 py-2 text-sm">Assign</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            (function () {
+                const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+                // Toggle status
+                document.querySelectorAll('.toggle-status').forEach(btn => {
+                    btn.addEventListener('click', async () => {
+                        const id = btn.getAttribute('data-id');
+                        const url = '/admin/classrooms/' + id + '/status';
+                        const res = await fetch(url, { method: 'PATCH', headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' } });
+                        if (res.ok) { location.reload(); }
+                    });
+                });
+
+                // Assign faculty modal
+                const modal = document.getElementById('assignModal');
+                const modalName = document.getElementById('modalClassName');
+                const assignForm = document.getElementById('assignForm');
+                document.querySelectorAll('.assign-faculty').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const id = btn.getAttribute('data-id');
+                        const name = btn.getAttribute('data-name');
+                        modalName.textContent = name;
+                        assignForm.action = '/admin/classrooms/' + id + '/assign-faculty';
+                        modal.classList.remove('hidden');
+                    });
+                });
+
+                document.getElementById('assignCancel').addEventListener('click', () => {
+                    modal.classList.add('hidden');
+                });
+
+                // Export dropdown toggles per-row
+                document.querySelectorAll('.export-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const menu = btn.parentElement.querySelector('.export-menu');
+                        if (menu) { menu.classList.toggle('hidden'); }
+                    });
+                });
+
+                // Classroom detail export toggle
+                const exportToggle = document.getElementById('exportToggle');
+                const exportMenu = document.getElementById('exportMenu');
+                if (exportToggle && exportMenu) {
+                    exportToggle.addEventListener('click', () => exportMenu.classList.toggle('hidden'));
+                }
+            })();
+        </script>
     </div>
 @endsection

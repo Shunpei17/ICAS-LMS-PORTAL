@@ -431,16 +431,17 @@
                         Verification Required. Please upload the necessary documents to activate your account.
                     </div>
                     
-                    <div class="mt-4 space-y-4">
-                        <div class="field-wrap">
-                            <label class="block text-xs font-bold uppercase tracking-[0.1em] text-white/90 mb-2">Section 1: Receipt Proof (Payment Verification)</label>
-                            <input type="file" name="receipt_proof" class="auth-input h-12 w-full rounded-2xl py-3 px-4 text-sm text-white outline-none transition" required accept=".jpg,.jpeg,.png,.pdf">
-                        </div>
-
-                        <div class="field-wrap">
-                            <label class="block text-xs font-bold uppercase tracking-[0.1em] text-white/90 mb-2">Section 2: Student ID (Identity Verification)</label>
-                            <input type="file" name="student_id_proof" class="auth-input h-12 w-full rounded-2xl py-3 px-4 text-sm text-white outline-none transition" required accept=".jpg,.jpeg,.png,.pdf">
-                        </div>
+                        @if(session('enrollment_type') === 'New Student')
+                            <div class="field-wrap">
+                                <label class="block text-xs font-bold uppercase tracking-[0.1em] text-white/90 mb-2">Section 1: Receipt Proof (Payment Verification)</label>
+                                <input type="file" name="receipt_proof" class="auth-input h-12 w-full rounded-2xl py-3 px-4 text-sm text-white outline-none transition" required accept=".jpg,.jpeg,.png,.pdf">
+                            </div>
+                        @elseif(session('enrollment_type') === 'Old Student')
+                            <div class="field-wrap">
+                                <label class="block text-xs font-bold uppercase tracking-[0.1em] text-white/90 mb-2">Section 1: Student ID (Identity Verification)</label>
+                                <input type="file" name="student_id_proof" class="auth-input h-12 w-full rounded-2xl py-3 px-4 text-sm text-white outline-none transition" required accept=".jpg,.jpeg,.png,.pdf">
+                            </div>
+                        @endif
                     </div>
 
                     <button type="submit" class="primary-action mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold uppercase tracking-[0.12em] active:scale-[0.99]">

@@ -34,7 +34,9 @@ class User extends Authenticatable
         'verification_file',
         'status',
         'receipt_proof',
-        'student_id_proof'
+        'student_id_proof',
+        'academic_level',
+        'course'
     ];
 
     /**

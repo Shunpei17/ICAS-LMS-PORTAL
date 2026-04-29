@@ -89,10 +89,36 @@
                                class="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition">
                                 Edit
                             </a>
+                            <div class="relative">
+                                <button data-export-toggle="{{ $room['id'] }}" type="button" class="ml-2 inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">
+                                    Export ▾
+                                </button>
+                                <div id="export-menu-{{ $room['id'] }}" class="hidden absolute right-0 mt-2 w-40 rounded-xl bg-white border border-slate-100 shadow-lg z-50">
+                                    <a href="{{ route('faculty.classrooms.export', $room['id']) }}?format=csv" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download CSV</a>
+                                    <a href="{{ route('faculty.classrooms.export', $room['id']) }}?format=xlsx" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download Excel</a>
+                                    <a href="{{ route('faculty.classrooms.export', $room['id']) }}?format=pdf" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download PDF</a>
+                                </div>
+                            </div>
                         </div>
                     </article>
                 @endforeach
             </div>
+            <script>
+                document.addEventListener('click', function(e){
+                    // close any open export menus when clicking outside
+                    if(!e.target.matches('[data-export-toggle]') && !e.target.closest('[id^="export-menu-"]')){
+                        document.querySelectorAll('[id^="export-menu-"]').forEach(function(el){ el.classList.add('hidden'); });
+                    }
+                });
+
+                document.querySelectorAll('[data-export-toggle]').forEach(function(btn){
+                    btn.addEventListener('click', function(e){
+                        var id = this.getAttribute('data-export-toggle');
+                        var menu = document.getElementById('export-menu-' + id);
+                        if(menu) menu.classList.toggle('hidden');
+                    });
+                });
+            </script>
         @else
             <section class="rounded-3xl border border-dashed border-slate-300 bg-white p-16 text-center">
                 <div class="mx-auto h-16 w-16 rounded-3xl bg-green-50 text-green-500 grid place-items-center mb-4">

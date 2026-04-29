@@ -102,6 +102,9 @@ class AuthController extends Controller
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role' => ['required', 'in:student,faculty'],
+            'enrollment_type' => ['nullable', 'string', 'in:New Student,Old Student', 'required_if:role,student'],
+            'academic_level' => ['nullable', 'string', 'required_if:role,student'],
+            'course' => ['nullable', 'string', 'required_if:role,student'],
         ]);
 
         User::create([
@@ -109,6 +112,9 @@ class AuthController extends Controller
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'role' => $data['role'],
+            'enrollment_type' => $data['enrollment_type'] ?? null,
+            'academic_level' => $data['academic_level'] ?? null,
+            'course' => $data['course'] ?? null,
         ]);
 
         return redirect()->route('login')
@@ -145,15 +151,23 @@ class AuthController extends Controller
 
             if ($user->role === 'student' && $user->status === 'pending') {
                 Auth::logout();
+                $hasRequiredProof = false;
+                if ($user->enrollment_type === 'New Student' && $user->receipt_proof) {
+                    $hasRequiredProof = true;
+                } elseif ($user->enrollment_type === 'Old Student' && $user->student_id_proof) {
+                    $hasRequiredProof = true;
+                }
                 
-                if ($user->receipt_proof && $user->student_id_proof) {
+                if ($hasRequiredProof) {
                     return back()->withErrors([
                         'email' => 'Your account is under review by an administrator. Please wait for activation.',
                     ])->withInput();
                 }
 
                 $request->session()->put('pending_user_id', $user->id);
-                return back()->with('show_verification', true)->withInput();
+                return back()->with('show_verification', true)
+                             ->with('enrollment_type', $user->enrollment_type)
+                             ->withInput();
             }
 
             $request->session()->regenerate();
@@ -191,17 +205,24 @@ class AuthController extends Controller
             return redirect()->route('login')->withErrors(['email' => 'Invalid account state.']);
         }
 
-        $request->validate([
-            'receipt_proof' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:2048'],
-            'student_id_proof' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:2048'],
-        ]);
-
-        if ($request->hasFile('receipt_proof')) {
-            $user->receipt_proof = $request->file('receipt_proof')->store('verifications', 'public');
-        }
-
-        if ($request->hasFile('student_id_proof')) {
-            $user->student_id_proof = $request->file('student_id_proof')->store('verifications', 'public');
+        if ($user->enrollment_type === 'New Student') {
+            $request->validate([
+                'receipt_proof' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:2048'],
+            ]);
+            
+            if ($request->hasFile('receipt_proof')) {
+                $user->receipt_proof = $request->file('receipt_proof')->store('verifications', 'public');
+            }
+        } elseif ($user->enrollment_type === 'Old Student') {
+            $request->validate([
+                'student_id_proof' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:2048'],
+            ]);
+            
+            if ($request->hasFile('student_id_proof')) {
+                $user->student_id_proof = $request->file('student_id_proof')->store('verifications', 'public');
+            }
+        } else {
+            return redirect()->route('login')->withErrors(['email' => 'Invalid enrollment type.']);
         }
 
         $user->save();

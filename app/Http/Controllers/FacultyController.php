@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\QueryException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -373,14 +374,60 @@ class FacultyController extends Controller
 
     public function storeAttendanceRecord(StoreFacultyAttendanceRecordRequest $request): RedirectResponse
     {
-        FacultyAttendanceRecord::query()->create([
-            'faculty_user_id' => Auth::id(),
-            ...$request->validated(),
-        ]);
+        $data = $request->validated();
 
-        return redirect()
-            ->route('faculty.grades')
-            ->with('status', 'Attendance record registered successfully.');
+        $classroom = null;
+        if (! empty($data['student_class'])) {
+            $classroom = \App\Models\Classroom::where('code', $data['student_class'])->first();
+        }
+
+        if ($classroom !== null) {
+            $this->authorize('manage', $classroom);
+        }
+
+        // Prevent duplicate attendance records for same student_class/date/name
+        $existing = FacultyAttendanceRecord::query()
+            ->where('student_name', $data['student_name'])
+            ->where('student_class', $data['student_class'])
+            ->whereDate('attendance_date', $data['attendance_date'])
+            ->first();
+
+        if ($existing) {
+            // If request asks to update existing record, perform update
+            if ($request->boolean('update_if_exists')) {
+                $existing->update(['status' => $data['status']]);
+
+                return redirect()
+                    ->route('faculty.grades')
+                    ->with('status', 'Existing attendance updated successfully.');
+            }
+
+            // Otherwise, block creation and notify user
+            return redirect()
+                ->route('faculty.grades')
+                ->withErrors(['attendance' => 'Attendance already recorded for this student today.']);
+        }
+
+        try {
+            FacultyAttendanceRecord::query()->create([
+                'faculty_user_id' => Auth::id(),
+                ...$data,
+            ]);
+
+            return redirect()
+                ->route('faculty.grades')
+                ->with('status', 'Attendance record registered successfully.');
+        } catch (QueryException $e) {
+            $sqlState = $e->errorInfo[0] ?? null;
+            // SQLSTATE 23000 is integrity constraint violation (unique index), handle gracefully
+            if ($sqlState === '23000') {
+                return redirect()
+                    ->route('faculty.grades')
+                    ->withErrors(['attendance' => 'Attendance already recorded for this student today.']);
+            }
+
+            throw $e;
+        }
     }
 
     public function exportAttendanceRecords(Request $request): StreamedResponse

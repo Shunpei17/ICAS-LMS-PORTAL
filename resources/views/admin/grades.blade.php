@@ -12,7 +12,19 @@
                 <p class="mt-1 text-sm text-slate-500">Academic performance overview across all enrolled courses.</p>
             </div>
             <div class="flex items-center gap-3">
-                <form action="{{ route('admin.grades') }}" method="GET" class="flex items-center gap-2">
+                <form action="{{ route('admin.grades') }}" method="GET" class="flex flex-wrap items-center gap-2">
+                    <select name="academic_level" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white" onchange="this.form.submit()">
+                        <option value="">All Levels</option>
+                        <option value="Senior High School" @selected($academicLevelFilter === 'Senior High School')>Senior High</option>
+                        <option value="1st Year College" @selected($academicLevelFilter === '1st Year College')>1st Year</option>
+                        <option value="2nd Year College" @selected($academicLevelFilter === '2nd Year College')>2nd Year</option>
+                        <option value="3rd Year College" @selected($academicLevelFilter === '3rd Year College')>3rd Year</option>
+                    </select>
+                    <select name="course" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white" onchange="this.form.submit()">
+                        <option value="">All Courses</option>
+                        <option value="BSIT" @selected($courseFilter === 'BSIT')>BSIT</option>
+                        <option value="BSHM" @selected($courseFilter === 'BSHM')>BSHM</option>
+                    </select>
                     <select name="subject" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white" onchange="this.form.submit()">
                         <option value="">All Subjects</option>
                         @foreach($subjectOptions as $option)
@@ -22,10 +34,18 @@
                         @endforeach
                     </select>
                 </form>
-                <a href="{{ route('admin.grades.export', ['subject' => $subjectFilter]) }}" class="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white hover:bg-slate-800 transition">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Export CSV
-                </a>
+                <form action="{{ route('admin.grades.export') }}" method="GET" class="flex items-center gap-2">
+                    <input type="hidden" name="academic_level" value="{{ $academicLevelFilter }}">
+                    <input type="hidden" name="course" value="{{ $courseFilter }}">
+                    <input type="hidden" name="subject" value="{{ $subjectFilter }}">
+                    <select name="format" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white">
+                        <option value="csv">Excel / CSV</option>
+                    </select>
+                    <button type="submit" class="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Generate
+                    </button>
+                </form>
             </div>
         </div>
     </section>
@@ -41,9 +61,8 @@
         @endforeach
     </div>
 
-    {{-- Per-Course Distribution --}}
     <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-6">
-        <h3 class="text-lg font-bold text-slate-900 mb-6">Per-Course Grade Distribution</h3>
+        <h3 class="text-lg font-bold text-slate-900 mb-6">Per-Subject Grade Distribution</h3>
         @php
         $gradeColors=['A'=>'bg-emerald-500','B'=>'bg-sky-500','C'=>'bg-amber-400','D'=>'bg-orange-400','F'=>'bg-rose-500'];
         @endphp
@@ -57,10 +76,6 @@
                                 <p class="font-bold text-slate-900">{{ $course['name'] }}</p>
                                 <p class="text-xs font-mono text-slate-400 mt-0.5">{{ $course['code'] }}</p>
                             </div>
-                            <button type="button" onclick="exportSubjectCSV('{{ $course['id'] ?? $course['code'] }}')" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition shadow-sm" title="Export CSV for this subject">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                Export
-                            </button>
                         </div>
                         <div class="flex flex-wrap gap-3 text-xs">
                             <div class="rounded-xl bg-white border border-slate-200 px-3 py-1.5 text-center">
@@ -146,9 +161,97 @@
     @endif
 </div>
 
+    <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-6 mt-6">
+        <h3 class="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+            All Student Grades
+            <span class="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded-full">{{ $allGrades->total() }} total</span>
+        </h3>
+        
+        <div class="overflow-x-auto rounded-2xl border border-slate-200">
+            <table class="min-w-full text-sm text-left">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Student</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Level / Course</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Subject</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Grade</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse($allGrades as $grade)
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-5 py-3.5 font-semibold text-slate-900">{{ $grade->user->name ?? 'Unknown' }}</td>
+                        <td class="px-5 py-3.5 text-slate-600 text-xs">
+                            {{ $grade->user->academic_level ?? 'N/A' }}<br>
+                            <span class="text-slate-400">{{ $grade->user->course ?? 'N/A' }}</span>
+                        </td>
+                        <td class="px-5 py-3.5 text-slate-700">{{ $grade->module_name }} <span class="text-xs text-slate-400">({{ $grade->module_code }})</span></td>
+                        <td class="px-5 py-3.5">
+                            <span class="font-bold text-slate-900">{{ $grade->grade_percent }}%</span>
+                            @if(!$grade->grade_verified)
+                                <span class="ml-2 bg-amber-100 text-amber-700 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">Unverified</span>
+                            @endif
+                        </td>
+                        <td class="px-5 py-3.5 text-right space-x-2">
+                            @if(!$grade->grade_verified)
+                                <form action="{{ route('admin.grades.verify', $grade->id) }}" method="POST" class="inline-block">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="text-xs font-semibold bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-xl hover:bg-emerald-200 transition">Verify</button>
+                                </form>
+                            @endif
+                            <button type="button" onclick="openEditModal({{ $grade->id }}, {{ $grade->grade_percent }})" class="text-xs font-semibold bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl hover:bg-slate-200 transition">Edit</button>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="5" class="px-5 py-6 text-center text-slate-500">No grades found.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-4">
+            {{ $allGrades->links() }}
+        </div>
+    </section>
+</div>
+
+<!-- Edit Grade Modal -->
+<div id="editGradeModal" class="fixed inset-0 z-50 flex items-center justify-center hidden bg-slate-900/50 backdrop-blur-sm">
+    <div class="bg-white rounded-3xl shadow-xl w-full max-w-md p-6">
+        <h3 class="text-lg font-bold text-slate-900 mb-4">Edit Student Grade (Admin Override)</h3>
+        <form id="editGradeForm" method="POST">
+            @csrf
+            @method('PATCH')
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">New Grade (%)</label>
+                    <input type="number" step="0.01" min="0" max="100" name="grade_percent" id="modalGradeInput" required class="w-full rounded-xl border border-slate-200 px-4 py-2 text-slate-900 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/20">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Reason for Change</label>
+                    <textarea name="reason" required rows="3" class="w-full rounded-xl border border-slate-200 px-4 py-2 text-slate-900 focus:border-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/20" placeholder="e.g., Authorized manual correction, recalculated..."></textarea>
+                    <p class="mt-1 text-xs text-slate-500">This change will be logged in the Audit Trail.</p>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" onclick="closeEditModal()" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900">Cancel</button>
+                <button type="submit" class="rounded-xl bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
-    function exportSubjectCSV(subjectCode) {
-        window.location.href = "{{ route('admin.grades.export') }}?subject=" + encodeURIComponent(subjectCode);
+    function openEditModal(recordId, currentGrade) {
+        document.getElementById('editGradeForm').action = `/admin/grades/${recordId}/update`;
+        document.getElementById('modalGradeInput').value = currentGrade;
+        document.getElementById('editGradeModal').classList.remove('hidden');
+    }
+    function closeEditModal() {
+        document.getElementById('editGradeModal').classList.add('hidden');
     }
 </script>
 @endsection
