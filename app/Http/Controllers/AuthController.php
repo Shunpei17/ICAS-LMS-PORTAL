@@ -151,6 +151,7 @@ class AuthController extends Controller
 
             if ($user->status === 'inactive') {
                 Auth::logout();
+
                 return back()->withErrors([
                     'email' => 'Your account has been deactivated. Please contact the administrator.',
                 ])->withInput();
@@ -164,7 +165,7 @@ class AuthController extends Controller
                 } elseif ($user->enrollment_type === 'Old Student' && $user->student_id_proof) {
                     $hasRequiredProof = true;
                 }
-                
+
                 if ($hasRequiredProof) {
                     return back()->withErrors([
                         'email' => 'Your account is under review by an administrator. Please wait for activation.',
@@ -172,9 +173,10 @@ class AuthController extends Controller
                 }
 
                 $request->session()->put('pending_user_id', $user->id);
+
                 return back()->with('show_verification', true)
-                             ->with('enrollment_type', $user->enrollment_type)
-                             ->withInput();
+                    ->with('enrollment_type', $user->enrollment_type)
+                    ->withInput();
             }
 
             $request->session()->regenerate();
@@ -211,7 +213,7 @@ class AuthController extends Controller
         ]);
 
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return redirect()->route('login');
         }
 
@@ -228,12 +230,12 @@ class AuthController extends Controller
     public function verifyUpload(Request $request): RedirectResponse
     {
         $userId = $request->session()->get('pending_user_id');
-        if (!$userId) {
+        if (! $userId) {
             return redirect()->route('login')->withErrors(['email' => 'Session expired. Please try again.']);
         }
 
         $user = User::find($userId);
-        if (!$user || $user->status !== 'pending') {
+        if (! $user || $user->status !== 'pending') {
             return redirect()->route('login')->withErrors(['email' => 'Invalid account state.']);
         }
 
@@ -241,7 +243,7 @@ class AuthController extends Controller
             $request->validate([
                 'receipt_proof' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:2048'],
             ]);
-            
+
             if ($request->hasFile('receipt_proof')) {
                 $user->receipt_proof = $request->file('receipt_proof')->store('verifications', 'public');
             }
@@ -249,7 +251,7 @@ class AuthController extends Controller
             $request->validate([
                 'student_id_proof' => ['required', 'file', 'mimes:jpeg,png,jpg,pdf', 'max:2048'],
             ]);
-            
+
             if ($request->hasFile('student_id_proof')) {
                 $user->student_id_proof = $request->file('student_id_proof')->store('verifications', 'public');
             }

@@ -3,25 +3,25 @@
 namespace App\Services;
 
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Http\UploadedFile;
 
 class StudentBulkImportService
 {
     const DEFAULT_PASSWORD = '@icas_2026_12345';
+
     const BATCH_SIZE = 100;
 
     /**
      * Import students from CSV file.
-     * 
-     * @param UploadedFile $file
+     *
      * @return array{success: int, failed: int, errors: array, duplicates: int}
      */
     public function import(UploadedFile $file): array
     {
         $stream = fopen($file->getRealPath(), 'r');
-        if (!$stream) {
+        if (! $stream) {
             return ['success' => 0, 'failed' => 0, 'errors' => ['Failed to open file'], 'duplicates' => 0];
         }
 
@@ -39,7 +39,7 @@ class StudentBulkImportService
             return [
                 'success' => 0,
                 'failed' => 0,
-                'errors' => ['CSV header mismatch. Expected: ' . implode(', ', $expectedColumns)],
+                'errors' => ['CSV header mismatch. Expected: '.implode(', ', $expectedColumns)],
                 'duplicates' => 0,
             ];
         }
@@ -48,6 +48,7 @@ class StudentBulkImportService
         while (($row = fgetcsv($stream)) !== false) {
             if (empty(array_filter($row))) {
                 $lineNumber++;
+
                 continue;
             }
 
@@ -55,10 +56,11 @@ class StudentBulkImportService
 
             // Validate row
             $validation = $this->validateRow($studentNumber, $fullName, $email, $academicLevel, $lineNumber);
-            if (!$validation['valid']) {
+            if (! $validation['valid']) {
                 $failed++;
                 $errors = array_merge($errors, $validation['errors']);
                 $lineNumber++;
+
                 continue;
             }
 
@@ -72,6 +74,7 @@ class StudentBulkImportService
                 $duplicates++;
                 $errors[] = "Line $lineNumber: Duplicate student (email: $email or student number: $studentNumber already exists)";
                 $lineNumber++;
+
                 continue;
             }
 
@@ -101,7 +104,7 @@ class StudentBulkImportService
         }
 
         // Insert remaining batch
-        if (!empty($batch)) {
+        if (! empty($batch)) {
             $success += $this->insertBatch($batch);
         }
 
@@ -139,15 +142,15 @@ class StudentBulkImportService
 
         if (empty($email)) {
             $errors[] = "Line $lineNumber: Email is required.";
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        } elseif (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $errors[] = "Line $lineNumber: Email format is invalid ($email).";
         }
 
         $validLevels = ['Senior High School', '1st Year College', '2nd Year College', '3rd Year College'];
         if (empty($academicLevel)) {
             $errors[] = "Line $lineNumber: Academic Level is required.";
-        } elseif (!in_array($academicLevel, $validLevels)) {
-            $errors[] = "Line $lineNumber: Academic Level must be one of: " . implode(', ', $validLevels);
+        } elseif (! in_array($academicLevel, $validLevels)) {
+            $errors[] = "Line $lineNumber: Academic Level must be one of: ".implode(', ', $validLevels);
         }
 
         return [
@@ -163,9 +166,11 @@ class StudentBulkImportService
     {
         try {
             User::query()->insert($batch);
+
             return count($batch);
         } catch (\Exception $e) {
             Log::error('bulk_import_batch_error', ['error' => $e->getMessage()]);
+
             return 0;
         }
     }

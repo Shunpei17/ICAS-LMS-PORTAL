@@ -19,6 +19,7 @@ class EnsureClassroomActive
             if ($routeClassroom->status !== 'active') {
                 abort(403, 'Classroom is inactive.');
             }
+
             return $next($request);
         }
 

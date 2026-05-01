@@ -2,9 +2,9 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\View;
 use App\Services\SystemSettingsService;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
 
 class ThemeServiceProvider extends ServiceProvider
 {
@@ -16,7 +16,7 @@ class ThemeServiceProvider extends ServiceProvider
     public function boot(): void
     {
         try {
-            $settings = new SystemSettingsService();
+            $settings = new SystemSettingsService;
 
             $portalTheme = [
                 'admin' => $settings->get('theme_admin_color', '#16a34a'),

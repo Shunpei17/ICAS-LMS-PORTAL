@@ -103,6 +103,7 @@ class MapAttendanceStudents extends Command
                     $row->student_user_id = $userId;
                     $row->save();
                 }
+
                 continue;
             }
 
@@ -111,6 +112,7 @@ class MapAttendanceStudents extends Command
         }
 
         $this->info('Done.');
+
         return 0;
     }
 }

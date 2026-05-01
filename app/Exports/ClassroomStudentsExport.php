@@ -4,11 +4,11 @@ namespace App\Exports;
 
 use Illuminate\Collections\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 
-class ClassroomStudentsExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize
+class ClassroomStudentsExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping
 {
     protected Collection $students;
 

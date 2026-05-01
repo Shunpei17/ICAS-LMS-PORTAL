@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreStudentEnrollmentRequest;
 use App\Http\Requests\StoreStudentModuleRecordRequest;
 use App\Models\StudentModuleRecord;
+use App\Services\GradingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,7 +17,7 @@ class StudentController extends Controller
     {
         $user = Auth::user();
         $studentDetails = [
-            'student_id' => 'STU-' . str_pad($user->id ?? 999, 4, '0', STR_PAD_LEFT),
+            'student_id' => 'STU-'.str_pad($user->id ?? 999, 4, '0', STR_PAD_LEFT),
             'name' => $user->name ?? 'John Doe',
             'email' => $user->email ?? 'student@example.com',
             'phone' => '+63 912 345 6789',
@@ -24,8 +25,9 @@ class StudentController extends Controller
             'program' => $user->course ?? 'Not Specified',
             'year_level' => $user->academic_level ?? 'Not Specified',
             'status' => 'Regular',
-            'emergency_contact' => ['name' => 'Jane Doe', 'relation' => 'Mother', 'phone' => '+63 998 765 4321']
+            'emergency_contact' => ['name' => 'Jane Doe', 'relation' => 'Mother', 'phone' => '+63 998 765 4321'],
         ];
+
         return view('student.profile', compact('studentDetails'));
     }
 
@@ -56,6 +58,7 @@ class StudentController extends Controller
         ];
         $totalUnits = 18;
         $totalSubjects = 5;
+
         return view('student.schedule', compact('schedule', 'totalUnits', 'totalSubjects'));
     }
 
@@ -71,12 +74,14 @@ class StudentController extends Controller
             ['id' => 7, 'type' => 'announcement', 'title' => 'Enrollment Period Reminder', 'body' => 'The enrollment period for Second Semester ends on January 31. Please complete your enrollment now.', 'time' => '1 week ago', 'read' => true],
         ];
         $unreadCount = collect($notifications)->where('read', false)->count();
+
         return view('student.notifications', compact('notifications', 'unreadCount'));
     }
 
     public function settings(): View
     {
         $user = Auth::user();
+
         return view('student.settings', compact('user'));
     }
 
@@ -210,9 +215,10 @@ class StudentController extends Controller
                 ->first()
             : null;
 
-        $grading = new \App\Services\GradingService();
+        $grading = new GradingService;
         $gpas = $allRecords->map(function ($r) use ($grading) {
             $g = $grading->toGpa((float) $r->grade_percent);
+
             return is_string($g) && $g !== 'Dropped' ? (float) $g : null;
         })->filter()->all();
 
@@ -428,7 +434,6 @@ class StudentController extends Controller
         return view('student.grades', compact('summary', 'courses', 'majorExams'));
     }
 
-
     public function documents(): View
     {
         $summary = [
@@ -499,4 +504,3 @@ class StudentController extends Controller
         return view('student.attendance', compact('summary', 'records', 'courseBreakdown'));
     }
 }
-

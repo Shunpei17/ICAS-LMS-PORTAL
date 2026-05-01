@@ -9,7 +9,7 @@ class VerificationController extends Controller
     public function show()
     {
         $user = Auth::user();
-        
+
         if ($user->is_verified) {
             return redirect()->route('dashboard');
         }
@@ -28,7 +28,7 @@ class VerificationController extends Controller
         }
 
         $path = $request->file('verification_file')->store('public/verifications');
-        
+
         $user->verification_file = $path;
         $user->status = 'pending';
         $user->save();

@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\FacultyAttendanceRecord;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CleanupAttendanceDuplicates extends Command
@@ -39,6 +38,7 @@ class CleanupAttendanceDuplicates extends Command
 
         if ($duplicateGroups->isEmpty()) {
             $this->info('No duplicates found.');
+
             return 0;
         }
 
@@ -82,6 +82,7 @@ class CleanupAttendanceDuplicates extends Command
         }
 
         $this->info("Total records deleted: {$totalDeleted} (dry-run: ".($dryRun ? 'yes' : 'no').')');
+
         return 0;
     }
 }

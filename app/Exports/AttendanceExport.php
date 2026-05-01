@@ -8,9 +8,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 
 class AttendanceExport implements FromCollection, WithHeadings
 {
-    public function __construct(protected Collection $rows)
-    {
-    }
+    public function __construct(protected Collection $rows) {}
 
     public function collection()
     {

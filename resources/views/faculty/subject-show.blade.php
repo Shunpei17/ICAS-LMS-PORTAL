@@ -40,7 +40,7 @@
     ];
 @endphp
 
-<div class="space-y-6">
+<div class="space-y-6" x-data="subjectPage()">
     {{-- Breadcrumb --}}
     <div class="flex items-center gap-2 text-sm">
         <a href="{{ route('faculty.students') }}" class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-slate-600 hover:bg-slate-50 transition">
@@ -113,59 +113,53 @@
 
     {{-- Topics & Posts (Google Classroom style) --}}
     <div class="space-y-8">
-        @foreach($subject['topics'] as $topicIndex => $topic)
+        <template x-for="(topic, topicIndex) in topics" :key="topicIndex">
             <section>
                 {{-- Topic header --}}
                 <div class="flex items-center gap-3 mb-4">
-                    <div class="h-8 w-8 rounded-full bg-green-600 text-white grid place-items-center text-sm font-black flex-shrink-0">
-                        {{ $topicIndex + 1 }}
-                    </div>
-                    <h3 class="text-lg font-bold text-slate-900">{{ $topic['title'] }}</h3>
+                    <div class="h-8 w-8 rounded-full bg-green-600 text-white grid place-items-center text-sm font-black flex-shrink-0" x-text="topicIndex + 1"></div>
+                    <h3 class="text-lg font-bold text-slate-900" x-text="topic.title"></h3>
                     <div class="flex-1 h-px bg-slate-200"></div>
-                    <span class="text-xs font-semibold text-slate-400 flex-shrink-0">{{ count($topic['posts']) }} item{{ count($topic['posts']) !== 1 ? 's' : '' }}</span>
+
+                    <div class="flex items-center gap-3">
+                        @if(in_array(Auth::user()->role, ['faculty','admin']))
+                            <button
+                                @click.prevent="openAddModal(topicIndex)"
+                                class="rounded-xl bg-green-600 px-3 py-1.5 text-sm font-bold text-white transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                            >
+                                + Add Materials
+                            </button>
+                        @endif
+
+                        <span class="text-xs font-semibold text-slate-400 flex-shrink-0" x-text="topic.posts.length + ' item' + (topic.posts.length !== 1 ? 's' : '')"></span>
+                    </div>
                 </div>
 
                 {{-- Posts list --}}
                 <div class="space-y-2 pl-11">
-                    @foreach($topic['posts'] as $post)
-                        @php
-                            $iconKey = $post['icon'] ?? $post['type'];
-                            $iBg = match($iconKey) {
-                                'video'  => 'bg-sky-100 text-sky-600',
-                                'assign' => 'bg-amber-100 text-amber-700',
-                                'quiz'   => 'bg-rose-100 text-rose-600',
-                                default  => 'bg-slate-100 text-slate-600',
-                            };
-                            $tBadge  = $typeBadge[$post['type']] ?? 'bg-slate-100 text-slate-600';
-                            $tLabel  = $typeLabel[$post['type']] ?? ucfirst($post['type']);
-                        @endphp
+                    <template x-for="(post, pIndex) in topic.posts" :key="pIndex">
                         <div class="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white px-5 py-4 hover:border-green-300 hover:bg-green-50/20 transition-all cursor-pointer">
-                            {{-- Type icon --}}
-                            <div class="h-10 w-10 flex-shrink-0 rounded-xl {{ $iBg }} grid place-items-center mt-0.5">
-                                {!! $postIcons[$iconKey] ?? $postIcons['doc'] !!}
-                            </div>
+                            <div class="h-10 w-10 flex-shrink-0 rounded-xl" :class="post.icon === 'video' ? 'bg-sky-100 text-sky-600' : (post.icon === 'assign' ? 'bg-amber-100 text-amber-700' : (post.icon === 'quiz' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-600'))" x-html="getPostIcon(post.icon)"></div>
 
-                            {{-- Content --}}
                             <div class="flex-1 min-w-0">
                                 <div class="flex flex-wrap items-center gap-2 mb-1">
-                                    <p class="font-semibold text-slate-900 group-hover:text-green-700 transition-colors">{{ $post['title'] }}</p>
-                                    <span class="inline-flex rounded-full {{ $tBadge }} px-2.5 py-0.5 text-xs font-semibold">{{ $tLabel }}</span>
+                                    <p class="font-semibold text-slate-900 group-hover:text-green-700 transition-colors" x-text="post.title"></p>
+                                    <span class="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold" x-text="post.type ? (post.type.charAt(0).toUpperCase() + post.type.slice(1)) : 'Material'"></span>
                                 </div>
-                                <p class="text-sm text-slate-500 leading-relaxed">{{ $post['body'] }}</p>
+                                <p class="text-sm text-slate-500 leading-relaxed" x-text="post.body"></p>
                             </div>
 
-                            {{-- Date --}}
                             <div class="flex-shrink-0 text-right">
-                                <p class="text-xs text-slate-400 font-medium whitespace-nowrap">{{ $post['date'] }}</p>
+                                <p class="text-xs text-slate-400 font-medium whitespace-nowrap" x-text="post.date"></p>
                                 <svg class="w-4 h-4 text-slate-300 group-hover:text-green-500 transition-colors ml-auto mt-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                 </svg>
                             </div>
                         </div>
-                    @endforeach
+                    </template>
                 </div>
             </section>
-        @endforeach
+        </template>
     </div>
 
     {{-- Enrolled Students Section --}}
@@ -196,5 +190,126 @@
         </div>
     </section>
 </div>
+<!-- Add Material Modal (Alpine) -->
+<div x-show="showAddModal" style="display: none;" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-slate-900/50 p-4 backdrop-blur-sm" x-cloak>
+    <div 
+        @click.away="showAddModal = false"
+        x-show="showAddModal"
+        x-transition:enter="transition ease-out duration-300"
+        x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+        x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+        x-transition:leave="transition ease-in duration-200"
+        x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+        x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+        class="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-xl"
+    >
+        <div class="mb-5 flex items-center justify-between">
+            <h3 class="text-xl font-bold text-slate-900">Add Material</h3>
+            <button @click="showAddModal = false" class="text-slate-400 transition hover:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 rounded-lg p-1">
+                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <form @submit.prevent="addMaterial()">
+            <div class="space-y-4">
+                <div>
+                    <label for="mat-title" class="mb-1 block text-sm font-semibold text-slate-700">Material Title</label>
+                    <input id="mat-title" type="text" x-model="addForm.title" required class="block w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-green-500 focus:ring-green-500">
+                </div>
+
+                <div>
+                    <label for="mat-body" class="mb-1 block text-sm font-semibold text-slate-700">Description</label>
+                    <textarea id="mat-body" x-model="addForm.body" rows="4" class="block w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-green-500 focus:ring-green-500"></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label for="mat-file" class="mb-1 block text-sm font-semibold text-slate-700">File Upload</label>
+                        <input id="mat-file" type="file" @change="handleFile($event)" class="block w-full text-sm text-slate-600">
+                        <p class="mt-1 text-xs text-slate-400" x-text="addForm.fileName"></p>
+                    </div>
+
+                    <div>
+                        <label for="mat-type" class="mb-1 block text-sm font-semibold text-slate-700">Material Type</label>
+                        <select id="mat-type" x-model="addForm.type" class="block w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-green-500 focus:ring-green-500">
+                            <option value="material">PDF / Document</option>
+                            <option value="video">Video</option>
+                            <option value="link">Link</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" @click="showAddModal = false" class="rounded-xl px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-100">Cancel</button>
+                <button type="submit" class="rounded-xl bg-green-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-green-700">Add</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function subjectPage(){
+    return {
+        topics: @json($subject['topics']),
+        showAddModal: false,
+        currentTopicIndex: null,
+        addForm: { title: '', body: '', type: 'material', fileName: '' },
+        icons: @json($postIcons),
+        openAddModal(i){ this.currentTopicIndex = i; this.showAddModal = true; },
+        getPostIcon(key){ return this.icons[key] ?? this.icons['doc']; },
+        handleFile(e){ this.addForm.fileName = e.target.files[0]? e.target.files[0].name : ''; },
+        async addMaterial(){
+            if(this.currentTopicIndex === null) return;
+            const url = @json(route('faculty.materials.store'));
+            const csrf = @json(csrf_token());
+            const storageBase = @json(asset('storage'));
+
+            const fd = new FormData();
+            fd.append('subject_slug', @json($subject['slug']));
+            fd.append('topic_index', this.currentTopicIndex);
+            fd.append('title', this.addForm.title || 'Untitled');
+            fd.append('body', this.addForm.body || '');
+            fd.append('type', this.addForm.type || 'material');
+            const fileInput = document.getElementById('mat-file');
+            if (fileInput && fileInput.files && fileInput.files[0]) {
+                fd.append('file', fileInput.files[0]);
+            }
+
+            try {
+                const res = await fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrf }, body: fd });
+                if (!res.ok) {
+                    const txt = await res.text();
+                    console.error('Upload failed', txt);
+                    return;
+                }
+                const json = await res.json();
+                const m = json.material;
+                const date = new Date(m.created_at || Date.now());
+                const formattedDate = date.toLocaleString('en-US', { month: 'short', day: 'numeric' });
+                const newPost = {
+                    type: m.type || 'material',
+                    title: m.title,
+                    body: m.body || (m.original_filename ? m.original_filename : ''),
+                    date: formattedDate,
+                    icon: m.icon || (m.type === 'video' ? 'video' : 'doc'),
+                    file_url: m.file_path ? (storageBase + '/' + m.file_path) : null,
+                };
+
+                this.topics[this.currentTopicIndex].posts.unshift(newPost);
+                // reset form
+                this.addForm = { title: '', body: '', type: 'material', fileName: '' };
+                if (fileInput) fileInput.value = '';
+                this.showAddModal = false;
+                this.currentTopicIndex = null;
+            } catch (err) {
+                console.error(err);
+            }
+        }
+    }
+}
+</script>
 @endsection
 

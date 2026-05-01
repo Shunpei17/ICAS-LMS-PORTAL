@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Middleware\CheckForcePasswordChange;
+use App\Http\Middleware\CheckMaintenanceMode;
+use App\Http\Middleware\EnsureClassroomActive;
+use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -10,18 +14,18 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-   ->withMiddleware(function (Middleware $middleware) {
-    $middleware->alias([
-        'role'               => \App\Http\Middleware\RoleMiddleware::class,
-        'classroom.active'   => \App\Http\Middleware\EnsureClassroomActive::class,
-        'force.password.change' => \App\Http\Middleware\CheckForcePasswordChange::class,
-        'maintenance'        => \App\Http\Middleware\CheckMaintenanceMode::class,
-    ]);
-    // Apply maintenance check to every web request
-    $middleware->web(append: [
-        \App\Http\Middleware\CheckMaintenanceMode::class,
-    ]);
-})
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->alias([
+            'role' => RoleMiddleware::class,
+            'classroom.active' => EnsureClassroomActive::class,
+            'force.password.change' => CheckForcePasswordChange::class,
+            'maintenance' => CheckMaintenanceMode::class,
+        ]);
+        // Apply maintenance check to every web request
+        $middleware->web(append: [
+            CheckMaintenanceMode::class,
+        ]);
+    })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();

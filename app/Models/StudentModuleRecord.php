@@ -52,7 +52,7 @@ class StudentModuleRecord extends Model
     {
         static::updating(function (StudentModuleRecord $record) {
             if ($record->getOriginal('grade_verified') === true && $record->isDirty('grade_percent')) {
-                throw new \Exception("Cannot modify a verified grade.");
+                throw new \Exception('Cannot modify a verified grade.');
             }
         });
     }

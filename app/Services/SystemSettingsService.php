@@ -9,13 +9,14 @@ class SystemSettingsService
     public function get(string $key, $default = null)
     {
         $row = SystemSetting::where('setting_key', $key)->first();
-        if (!$row) {
+        if (! $row) {
             return $default;
         }
 
         $value = $row->setting_value;
         // Try JSON decode when appropriate
         $decoded = json_decode($value, true);
+
         return $decoded === null ? $value : $decoded;
     }
 
@@ -33,6 +34,7 @@ class SystemSettingsService
     {
         return SystemSetting::get()->pluck('setting_value', 'setting_key')->map(function ($v) {
             $d = json_decode($v, true);
+
             return $d === null ? $v : $d;
         })->all();
     }

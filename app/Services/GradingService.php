@@ -22,15 +22,33 @@ class GradingService
         }
 
         // Mapping provided by requirement (ranges inclusive as sensible)
-        if ($p >= 99 && $p <= 100) return '1.00';
-        if ($p >= 96 && $p <= 98) return '1.25';
-        if ($p >= 93 && $p <= 95) return '1.50';
-        if ($p >= 90 && $p <= 92) return '1.75';
-        if ($p >= 87 && $p <= 89) return '2.00';
-        if ($p >= 84 && $p <= 86) return '2.25';
-        if ($p >= 81 && $p <= 83) return '2.50';
-        if ($p >= 78 && $p <= 80) return '2.75';
-        if ($p >= 75 && $p <= 77) return '3.00';
+        if ($p >= 99 && $p <= 100) {
+            return '1.00';
+        }
+        if ($p >= 96 && $p <= 98) {
+            return '1.25';
+        }
+        if ($p >= 93 && $p <= 95) {
+            return '1.50';
+        }
+        if ($p >= 90 && $p <= 92) {
+            return '1.75';
+        }
+        if ($p >= 87 && $p <= 89) {
+            return '2.00';
+        }
+        if ($p >= 84 && $p <= 86) {
+            return '2.25';
+        }
+        if ($p >= 81 && $p <= 83) {
+            return '2.50';
+        }
+        if ($p >= 78 && $p <= 80) {
+            return '2.75';
+        }
+        if ($p >= 75 && $p <= 77) {
+            return '3.00';
+        }
 
         // Fallback
         return 'Dropped';

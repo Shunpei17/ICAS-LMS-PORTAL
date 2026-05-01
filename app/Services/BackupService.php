@@ -13,9 +13,10 @@ class BackupService
     public function backupDir(): string
     {
         $dir = storage_path('app/backups');
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
+
         return $dir;
     }
 
@@ -25,15 +26,15 @@ class BackupService
      */
     public function generate(string $initiatedBy = 'System', string $type = 'manual'): string
     {
-        $config   = config('database.connections.' . config('database.default'));
-        $host     = $config['host'];
-        $port     = $config['port'] ?? 3306;
-        $dbName   = $config['database'];
+        $config = config('database.connections.'.config('database.default'));
+        $host = $config['host'];
+        $port = $config['port'] ?? 3306;
+        $dbName = $config['database'];
         $username = $config['username'];
         $password = $config['password'];
 
-        $filename  = 'backup_' . date('Ymd_His') . '_' . $dbName . '.sql';
-        $filepath  = $this->backupDir() . DIRECTORY_SEPARATOR . $filename;
+        $filename = 'backup_'.date('Ymd_His').'_'.$dbName.'.sql';
+        $filepath = $this->backupDir().DIRECTORY_SEPARATOR.$filename;
 
         $sql = $this->buildDump($host, $port, $dbName, $username, $password);
 
@@ -42,11 +43,11 @@ class BackupService
         $size = filesize($filepath) ?: 0;
 
         BackupLog::create([
-            'filename'     => $filename,
-            'size_bytes'   => $size,
+            'filename' => $filename,
+            'size_bytes' => $size,
             'initiated_by' => $initiatedBy,
-            'type'         => $type,
-            'status'       => 'success',
+            'type' => $type,
+            'status' => 'success',
         ]);
 
         return $filepath;
@@ -63,34 +64,37 @@ class BackupService
         ]);
 
         $output = [];
-        $output[] = "-- ICAS Portal Database Backup";
-        $output[] = "-- Generated: " . now()->toDateTimeString();
+        $output[] = '-- ICAS Portal Database Backup';
+        $output[] = '-- Generated: '.now()->toDateTimeString();
         $output[] = "-- Database: {$dbName}";
         $output[] = "-- --------------------------------------------------------\n";
-        $output[] = "SET FOREIGN_KEY_CHECKS=0;";
+        $output[] = 'SET FOREIGN_KEY_CHECKS=0;';
         $output[] = "SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';";
         $output[] = "SET NAMES utf8mb4;\n";
 
-        $tables = $pdo->query("SHOW TABLES")->fetchAll(\PDO::FETCH_COLUMN);
+        $tables = $pdo->query('SHOW TABLES')->fetchAll(\PDO::FETCH_COLUMN);
 
         foreach ($tables as $table) {
             // Table structure
             $createStmt = $pdo->query("SHOW CREATE TABLE `{$table}`")->fetch(\PDO::FETCH_ASSOC);
             $output[] = "\n-- Table structure for `{$table}`";
             $output[] = "DROP TABLE IF EXISTS `{$table}`;";
-            $output[] = $createStmt['Create Table'] . ";\n";
+            $output[] = $createStmt['Create Table'].";\n";
 
             // Table data
             $rows = $pdo->query("SELECT * FROM `{$table}`")->fetchAll(\PDO::FETCH_ASSOC);
-            if (!empty($rows)) {
+            if (! empty($rows)) {
                 $output[] = "-- Dumping data for `{$table}`";
-                $columns = '`' . implode('`, `', array_keys($rows[0])) . '`';
+                $columns = '`'.implode('`, `', array_keys($rows[0])).'`';
                 foreach ($rows as $row) {
                     $values = array_map(function ($val) use ($pdo) {
-                        if ($val === null) return 'NULL';
+                        if ($val === null) {
+                            return 'NULL';
+                        }
+
                         return $pdo->quote((string) $val);
                     }, array_values($row));
-                    $output[] = "INSERT INTO `{$table}` ({$columns}) VALUES (" . implode(', ', $values) . ");";
+                    $output[] = "INSERT INTO `{$table}` ({$columns}) VALUES (".implode(', ', $values).');';
                 }
                 $output[] = '';
             }
@@ -106,13 +110,14 @@ class BackupService
      */
     public function databaseSizeMb(): float
     {
-        $dbName = config('database.connections.' . config('database.default') . '.database');
+        $dbName = config('database.connections.'.config('database.default').'.database');
         $result = DB::selectOne(
-            "SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb
+            'SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS size_mb
              FROM information_schema.TABLES
-             WHERE table_schema = ?",
+             WHERE table_schema = ?',
             [$dbName]
         );
+
         return (float) ($result?->size_mb ?? 0);
     }
 
@@ -121,16 +126,17 @@ class BackupService
      */
     public function listFiles(): array
     {
-        $dir   = $this->backupDir();
-        $files = glob($dir . DIRECTORY_SEPARATOR . '*.sql') ?: [];
-        $out   = [];
+        $dir = $this->backupDir();
+        $files = glob($dir.DIRECTORY_SEPARATOR.'*.sql') ?: [];
+        $out = [];
         foreach (array_reverse($files) as $file) {
             $out[] = [
                 'filename' => basename($file),
-                'size'     => round(filesize($file) / 1024, 1) . ' KB',
+                'size' => round(filesize($file) / 1024, 1).' KB',
                 'modified' => date('Y-m-d H:i', filemtime($file)),
             ];
         }
+
         return $out;
     }
 
@@ -139,10 +145,11 @@ class BackupService
      */
     public function delete(string $filename): bool
     {
-        $path = $this->backupDir() . DIRECTORY_SEPARATOR . basename($filename);
+        $path = $this->backupDir().DIRECTORY_SEPARATOR.basename($filename);
         if (file_exists($path) && is_file($path)) {
             return unlink($path);
         }
+
         return false;
     }
 }

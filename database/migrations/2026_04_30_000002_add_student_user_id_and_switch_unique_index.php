@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -34,7 +34,7 @@ return new class extends Migration
             // attempt to drop index by name if present
             try {
                 $table->dropUnique('fac_attendance_unique');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // ignore if index does not exist
             }
 
@@ -50,13 +50,13 @@ return new class extends Migration
         Schema::table('faculty_attendance_records', function (Blueprint $table) {
             try {
                 $table->dropUnique('fac_attendance_unique_by_user');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
             }
 
             // recreate old unique index on name/class/date if needed
             try {
                 $table->unique(['student_name', 'student_class', 'attendance_date'], 'fac_attendance_unique');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
             }
 
             $table->dropColumn('student_user_id');

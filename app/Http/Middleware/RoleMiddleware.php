@@ -12,15 +12,15 @@ class RoleMiddleware
     public function handle(Request $request, Closure $next, string $role): Response
     {
         // 1. Check if user is logged in
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             return redirect('/login');
         }
 
         // 2. Check if the user's role matches the required role
         if (Auth::user()->role !== $role) {
             // If they are a student trying to reach /admin, send them to their own dashboard
-            return redirect(Auth::user()->role . '/dashboard')
-                   ->with('error', 'You do not have permission to access that page.');
+            return redirect(Auth::user()->role.'/dashboard')
+                ->with('error', 'You do not have permission to access that page.');
         }
 
         return $next($request);

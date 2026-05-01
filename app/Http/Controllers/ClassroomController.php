@@ -7,12 +7,15 @@ use App\Models\Classroom;
 use App\Models\FacultyAttendanceRecord;
 use App\Models\StudentModuleRecord;
 use App\Models\User;
+use App\Services\AcademicTermService;
+use App\Services\GradingService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class ClassroomController extends Controller
 {
@@ -30,13 +33,13 @@ class ClassroomController extends Controller
             ->orderByDesc('created_at')
             ->get()
             ->map(function (Classroom $c): array {
-                $grading = new \App\Services\GradingService();
+                $grading = new GradingService;
                 $grades = StudentModuleRecord::where('module_code', $c->code)
                     ->whereNotNull('grade_percent')
                     ->get()
-                    ->map(fn($r) => $grading->toGpa((float) $r->grade_percent))
-                    ->filter(fn($g) => is_string($g) && $g !== 'Dropped')
-                    ->map(fn($g) => (float) $g)
+                    ->map(fn ($r) => $grading->toGpa((float) $r->grade_percent))
+                    ->filter(fn ($g) => is_string($g) && $g !== 'Dropped')
+                    ->map(fn ($g) => (float) $g)
                     ->all();
 
                 $avgGrade = count($grades) > 0 ? number_format(array_sum($grades) / count($grades), 2) : null;
@@ -55,21 +58,22 @@ class ClassroomController extends Controller
                     : null;
 
                 return [
-                    'id'             => $c->id,
-                    'name'           => $c->name,
-                    'code'           => $c->code,
-                    'schedule'       => $c->schedule,
-                    'description'    => $c->description,
-                    'status'         => $c->status,
-                    'student_count'  => $c->students_count,
-                    'avg_grade'      => $avgGrade !== null ? $avgGrade : null,
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'code' => $c->code,
+                    'schedule' => $c->schedule,
+                    'description' => $c->description,
+                    'status' => $c->status,
+                    'student_count' => $c->students_count,
+                    'avg_grade' => $avgGrade !== null ? $avgGrade : null,
                     'attendance_rate' => $attendanceRate !== null ? $attendanceRate.'%' : null,
-                    'created_at'     => $c->created_at?->format('M j, Y'),
+                    'created_at' => $c->created_at?->format('M j, Y'),
                 ];
             })
             ->all();
 
-        $termService = new \App\Services\AcademicTermService();
+        $termService = new AcademicTermService;
+
         return view('faculty.classrooms', compact('classrooms'))
             ->with('currentSemester', $termService->getCurrentSemester())
             ->with('enrollmentOpen', $termService->enrollmentOpen());
@@ -85,11 +89,11 @@ class ClassroomController extends Controller
     public function facultyStore(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name'        => ['required', 'string', 'max:255'],
-            'code'        => ['required', 'string', 'max:20', 'unique:classrooms,code'],
-            'schedule'    => ['nullable', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'code' => ['required', 'string', 'max:20', 'unique:classrooms,code'],
+            'schedule' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'status'      => ['required', 'in:active,inactive'],
+            'status' => ['required', 'in:active,inactive'],
         ]);
 
         /** @var User $faculty */
@@ -114,11 +118,11 @@ class ClassroomController extends Controller
         $this->authorizeClassroom($classroom);
 
         $validated = $request->validate([
-            'name'        => ['required', 'string', 'max:255'],
-            'code'        => ['required', 'string', 'max:20', 'unique:classrooms,code,'.$classroom->id],
-            'schedule'    => ['nullable', 'string', 'max:255'],
+            'name' => ['required', 'string', 'max:255'],
+            'code' => ['required', 'string', 'max:20', 'unique:classrooms,code,'.$classroom->id],
+            'schedule' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string', 'max:1000'],
-            'status'      => ['required', 'in:active,inactive'],
+            'status' => ['required', 'in:active,inactive'],
         ]);
 
         $classroom->update($validated);
@@ -152,20 +156,20 @@ class ClassroomController extends Controller
                 ->count();
 
             return [
-                'id'              => $student->id,
-                'name'            => $student->name,
-                'email'           => $student->email,
-                'initials'        => $this->extractInitials($student->name),
-                'grade'           => $moduleRecord?->grade_percent !== null
-                                            ? (new \App\Services\GradingService())->toGpa((float) $moduleRecord->grade_percent) . ' (' . number_format((float)$moduleRecord->grade_percent, 0) . '%)'
+                'id' => $student->id,
+                'name' => $student->name,
+                'email' => $student->email,
+                'initials' => $this->extractInitials($student->name),
+                'grade' => $moduleRecord?->grade_percent !== null
+                                            ? (new GradingService)->toGpa((float) $moduleRecord->grade_percent).' ('.number_format((float) $moduleRecord->grade_percent, 0).'%)'
                                             : null,
-                'section'         => $moduleRecord?->section,
+                'section' => $moduleRecord?->section,
                 'enrollment_status' => $moduleRecord?->enrollment_status ?? 'pending',
-                'attendance_rate'  => $attendanceTotal > 0
+                'attendance_rate' => $attendanceTotal > 0
                                         ? round(($attendancePresent / $attendanceTotal) * 100).'%'
                                         : null,
-                'enrolled_at'     => $student->pivot->enrolled_at
-                                        ? \Carbon\Carbon::parse($student->pivot->enrolled_at)->format('M j, Y')
+                'enrolled_at' => $student->pivot->enrolled_at
+                                        ? Carbon::parse($student->pivot->enrolled_at)->format('M j, Y')
                                         : null,
             ];
         })->all();
@@ -178,40 +182,43 @@ class ClassroomController extends Controller
             ->map(function (FacultyAttendanceRecord $r): array {
                 return [
                     'student_name' => $r->student_name,
-                    'date'         => $r->attendance_date->format('M j, Y'),
-                    'status'       => $r->status,
+                    'date' => $r->attendance_date->format('M j, Y'),
+                    'status' => $r->status,
                 ];
             })
             ->all();
 
         // Grade summary per student
-        $grading = new \App\Services\GradingService();
+        $grading = new GradingService;
         $gradeRecords = StudentModuleRecord::where('module_code', $classroom->code)
             ->with('user:id,name')
             ->whereNotNull('grade_percent')
             ->get()
             ->map(function (StudentModuleRecord $r) use ($grading): array {
                 $gpa = $grading->toGpa((float) $r->grade_percent);
+
                 return [
-                    'name'  => $r->user?->name ?? 'Unknown',
-                    'grade' => is_string($gpa) ? $gpa . ' (' . number_format((float)$r->grade_percent, 0) . '%)' : number_format((float) $r->grade_percent, 0) . '%',
+                    'name' => $r->user?->name ?? 'Unknown',
+                    'grade' => is_string($gpa) ? $gpa.' ('.number_format((float) $r->grade_percent, 0).'%)' : number_format((float) $r->grade_percent, 0).'%',
                     'value' => (float) $r->grade_percent,
                 ];
             })
             ->all();
 
         $avgGrade = count($gradeRecords) > 0
-            ? (function($recs) use ($grading) {
-                $gpas = collect($recs)->map(function($r) use ($grading) {
+            ? (function ($recs) use ($grading) {
+                $gpas = collect($recs)->map(function ($r) use ($grading) {
                     $g = $grading->toGpa($r['value']);
-                    return is_string($g) && $g !== 'Dropped' ? (float)$g : null;
+
+                    return is_string($g) && $g !== 'Dropped' ? (float) $g : null;
                 })->filter()->all();
 
                 return count($gpas) ? number_format(array_sum($gpas) / count($gpas), 2) : null;
             })($gradeRecords)
             : null;
 
-        $termService = new \App\Services\AcademicTermService();
+        $termService = new AcademicTermService;
+
         return view('faculty.classroom-show', compact('classroom', 'students', 'attendanceRecords', 'gradeRecords', 'avgGrade'))
             ->with('currentSemester', $termService->getCurrentSemester())
             ->with('finalExamStarted', $termService->finalExamStarted());
@@ -243,27 +250,28 @@ class ClassroomController extends Controller
                     : null;
 
                 return [
-                    'id'               => $c->id,
-                    'name'             => $c->name,
-                    'code'             => $c->code,
-                    'schedule'         => $c->schedule,
-                    'description'      => $c->description,
-                    'faculty_name'     => $c->faculty?->name ?? 'Instructor TBA',
-                    'student_count'    => $c->students_count,
-                    'is_enrolled'      => $isEnrolled,
-                    'grade'            => $moduleRecord?->grade_percent !== null
-                                             ? (new \App\Services\GradingService())->toGpa((float) $moduleRecord->grade_percent) . ' (' . number_format((float)$moduleRecord->grade_percent, 0) . '%)'
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'code' => $c->code,
+                    'schedule' => $c->schedule,
+                    'description' => $c->description,
+                    'faculty_name' => $c->faculty?->name ?? 'Instructor TBA',
+                    'student_count' => $c->students_count,
+                    'is_enrolled' => $isEnrolled,
+                    'grade' => $moduleRecord?->grade_percent !== null
+                                             ? (new GradingService)->toGpa((float) $moduleRecord->grade_percent).' ('.number_format((float) $moduleRecord->grade_percent, 0).'%)'
                                              : null,
                     'enrollment_status' => $moduleRecord?->enrollment_status,
-                    'section'          => $moduleRecord?->section,
+                    'section' => $moduleRecord?->section,
                 ];
             })
             ->all();
 
-        $myClassrooms  = array_filter($classrooms, fn (array $c): bool => $c['is_enrolled']);
-        $openClassrooms = array_filter($classrooms, fn (array $c): bool => !$c['is_enrolled']);
+        $myClassrooms = array_filter($classrooms, fn (array $c): bool => $c['is_enrolled']);
+        $openClassrooms = array_filter($classrooms, fn (array $c): bool => ! $c['is_enrolled']);
 
-        $termService = new \App\Services\AcademicTermService();
+        $termService = new AcademicTermService;
+
         return view('student.classrooms', compact('myClassrooms', 'openClassrooms'))
             ->with('currentSemester', $termService->getCurrentSemester())
             ->with('enrollmentOpen', $termService->enrollmentOpen());
@@ -310,18 +318,18 @@ class ClassroomController extends Controller
             ->when($statusFilter !== '', fn ($q) => $q->where('status', $statusFilter))
             ->when($search !== '', fn ($q) => $q->where(function ($q) use ($search): void {
                 $q->where('name', 'like', '%'.$search.'%')
-                  ->orWhere('code', 'like', '%'.$search.'%');
+                    ->orWhere('code', 'like', '%'.$search.'%');
             }))
             ->orderBy('name')
             ->get()
             ->map(function (Classroom $c): array {
-                $grading = new \App\Services\GradingService();
+                $grading = new GradingService;
                 $grades = StudentModuleRecord::where('module_code', $c->code)
                     ->whereNotNull('grade_percent')
                     ->get()
-                    ->map(fn($r) => $grading->toGpa((float) $r->grade_percent))
-                    ->filter(fn($g) => is_string($g) && $g !== 'Dropped')
-                    ->map(fn($g) => (float) $g)
+                    ->map(fn ($r) => $grading->toGpa((float) $r->grade_percent))
+                    ->filter(fn ($g) => is_string($g) && $g !== 'Dropped')
+                    ->map(fn ($g) => (float) $g)
                     ->all();
 
                 $avgGrade = count($grades) > 0 ? number_format(array_sum($grades) / count($grades), 2) : null;
@@ -332,14 +340,14 @@ class ClassroomController extends Controller
                     ->count();
 
                 return [
-                    'id'              => $c->id,
-                    'name'            => $c->name,
-                    'code'            => $c->code,
-                    'schedule'        => $c->schedule,
-                    'faculty_name'    => $c->faculty?->name ?? 'Unassigned',
-                    'student_count'   => $c->students_count,
-                    'status'          => $c->status,
-                    'avg_grade'       => $avgGrade !== null ? number_format((float) $avgGrade, 0).'%' : '—',
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'code' => $c->code,
+                    'schedule' => $c->schedule,
+                    'faculty_name' => $c->faculty?->name ?? 'Unassigned',
+                    'student_count' => $c->students_count,
+                    'status' => $c->status,
+                    'avg_grade' => $avgGrade !== null ? number_format((float) $avgGrade, 0).'%' : '—',
                     'attendance_rate' => $totalAttendance > 0
                                             ? round(($presentAttendance / $totalAttendance) * 100).'%'
                                             : '—',
@@ -347,14 +355,14 @@ class ClassroomController extends Controller
             })
             ->all();
 
-        $totalClassrooms    = Classroom::count();
-        $activeClassrooms   = Classroom::where('status', 'active')->count();
+        $totalClassrooms = Classroom::count();
+        $activeClassrooms = Classroom::where('status', 'active')->count();
         $totalStudentsEnrolled = \DB::table('classroom_students')->distinct('user_id')->count('user_id');
 
         $summary = [
             ['label' => 'Total Classrooms',    'value' => (string) $totalClassrooms,      'color' => 'slate'],
             ['label' => 'Active Classrooms',   'value' => (string) $activeClassrooms,     'color' => 'emerald'],
-            ['label' => 'Students Enrolled',   'value' => (string) $totalStudentsEnrolled,'color' => 'sky'],
+            ['label' => 'Students Enrolled',   'value' => (string) $totalStudentsEnrolled, 'color' => 'sky'],
         ];
 
         return view('admin.classrooms', compact('classrooms', 'summary', 'statusFilter', 'search'));
@@ -372,8 +380,8 @@ class ClassroomController extends Controller
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('student_number', 'like', '%'.$search.'%')
-                  ->orWhere('name', 'like', '%'.$search.'%')
-                  ->orWhere('email', 'like', '%'.$search.'%');
+                    ->orWhere('name', 'like', '%'.$search.'%')
+                    ->orWhere('email', 'like', '%'.$search.'%');
             });
         }
 
@@ -423,11 +431,13 @@ class ClassroomController extends Controller
 
         if (in_array($format, ['xlsx', 'xls'], true)) {
             $filename = 'classroom-'.$classroom->code.'-students-'.date('Ymd').'.xlsx';
+
             return Excel::download(new ClassroomStudentsExport($students), $filename);
         }
 
         if ($format === 'pdf') {
             $pdf = Pdf::loadView('admin.exports.classroom-students', compact('classroom', 'students'));
+
             return $pdf->download('classroom-'.$classroom->code.'-students-'.date('Ymd').'.pdf');
         }
 

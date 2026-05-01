@@ -21,7 +21,7 @@ it('allows admin to export classroom csv including student rows', function () {
     $classroom->students()->attach($student->id);
 
     $response = $this->actingAs($admin)
-        ->get(route('admin.classrooms.export', $classroom) . '?format=csv');
+        ->get(route('admin.classrooms.export', $classroom).'?format=csv');
 
     $response->assertStatus(200);
     $this->assertStringContainsString('text/csv', $response->headers->get('content-type'));
@@ -63,7 +63,7 @@ it('returns a PDF content when requested', function () {
     ]);
 
     $response = $this->actingAs($admin)
-        ->get(route('admin.classrooms.export', $classroom) . '?format=pdf');
+        ->get(route('admin.classrooms.export', $classroom).'?format=pdf');
 
     $response->assertStatus(200);
     $this->assertStringContainsString('pdf', $response->headers->get('content-type'));
@@ -71,7 +71,7 @@ it('returns a PDF content when requested', function () {
 });
 
 it('exports xlsx when requested (skips if ext-gd missing)', function () {
-    if (!extension_loaded('gd')) {
+    if (! extension_loaded('gd')) {
         $this->markTestSkipped('ext-gd not available, skipping xlsx export assertion.');
     }
 
@@ -89,7 +89,7 @@ it('exports xlsx when requested (skips if ext-gd missing)', function () {
     $classroom->students()->attach($student->id);
 
     $response = $this->actingAs($admin)
-        ->get(route('admin.classrooms.export', $classroom) . '?format=xlsx');
+        ->get(route('admin.classrooms.export', $classroom).'?format=xlsx');
 
     $response->assertStatus(200);
     $this->assertStringContainsString('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', (string) $response->headers->get('content-type'));

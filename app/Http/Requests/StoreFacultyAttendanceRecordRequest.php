@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Classroom;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -21,7 +22,7 @@ class StoreFacultyAttendanceRecordRequest extends FormRequest
             return true;
         }
 
-        $classroom = \App\Models\Classroom::where('code', $classCode)->first();
+        $classroom = Classroom::where('code', $classCode)->first();
         if ($classroom !== null && $classroom->status !== 'active') {
             return false;
         }

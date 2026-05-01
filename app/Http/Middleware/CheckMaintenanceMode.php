@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\SystemSetting;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,10 +12,10 @@ class CheckMaintenanceMode
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $maintenanceActive = \App\Models\SystemSetting::where('setting_key', 'maintenance_mode')
+        $maintenanceActive = SystemSetting::where('setting_key', 'maintenance_mode')
             ->value('setting_value') === '1';
 
-        if (!$maintenanceActive) {
+        if (! $maintenanceActive) {
             return $next($request);
         }
 

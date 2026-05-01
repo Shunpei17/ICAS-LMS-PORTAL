@@ -7,6 +7,7 @@ use App\Http\Controllers\ClassroomController;
 use App\Http\Controllers\FacultyController;
 use App\Http\Controllers\GradeController;
 use App\Http\Controllers\MaintenanceController;
+use App\Http\Controllers\MaterialController;
 use App\Http\Controllers\StudentController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -59,7 +60,7 @@ Route::middleware('auth', 'force.password.change')->group(function () {
     Route::get('/password/change', function () {
         return view('auth.change-password');
     })->name('password.change');
-    Route::post('/password/update', [\App\Http\Controllers\AuthController::class, 'updatePassword'])->name('password.update');
+    Route::post('/password/update', [AuthController::class, 'updatePassword'])->name('password.update');
 
     Route::middleware('role:admin')->group(function () {
         Route::post('/announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
@@ -112,6 +113,7 @@ Route::middleware('auth', 'force.password.change')->group(function () {
         Route::get('/classrooms/{classroom}', [ClassroomController::class, 'facultyShow'])->name('classrooms.show');
         Route::get('/forum', [FacultyController::class, 'forum'])->name('forum');
         Route::get('/profile', [FacultyController::class, 'profile'])->name('profile');
+        Route::post('/materials', [MaterialController::class, 'store'])->name('materials.store');
         // Export classroom students (faculty)
         Route::get('/classrooms/{classroom}/export', [ClassroomController::class, 'adminExport'])->name('faculty.classrooms.export');
         Route::get('/schedule', [FacultyController::class, 'schedule'])->name('schedule');

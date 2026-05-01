@@ -2,7 +2,6 @@
 
 use App\Models\Classroom;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 
 it('blocks student enrollment into inactive classroom via middleware', function () {
     $student = User::factory()->create(['role' => 'student']);

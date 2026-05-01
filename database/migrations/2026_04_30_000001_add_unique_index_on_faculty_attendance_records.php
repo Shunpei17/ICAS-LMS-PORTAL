@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -19,7 +19,7 @@ return new class extends Migration
         );
 
         if (! empty($duplicates)) {
-            $ids = array_map(fn($r) => $r->id, $duplicates);
+            $ids = array_map(fn ($r) => $r->id, $duplicates);
             DB::table('faculty_attendance_records')->whereIn('id', $ids)->delete();
         }
 
