@@ -17,6 +17,6 @@ class AttendanceExport implements FromCollection, WithHeadings
 
     public function headings(): array
     {
-        return ['Student Name', 'Class', 'Faculty', 'Date', 'Status', 'Notes'];
+        return ['Student Name', 'Course', 'Academic Level', 'Faculty', 'Date', 'Status', 'Notes'];
     }
 }

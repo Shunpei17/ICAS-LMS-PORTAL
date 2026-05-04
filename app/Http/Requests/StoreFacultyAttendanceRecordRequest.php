@@ -39,7 +39,9 @@ class StoreFacultyAttendanceRecordRequest extends FormRequest
     {
         return [
             'student_name' => ['required', 'string', 'max:255'],
-            'student_class' => ['required', 'string', 'max:50'],
+            'student_class' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'student_user_id' => ['sometimes', 'nullable', 'integer', 'exists:users,id'],
+            'subject_code' => ['sometimes', 'nullable', 'string', 'max:50'],
             'attendance_date' => ['required', 'date'],
             'status' => ['required', 'in:Present,Absent,Late'],
             // optional flag: if true, update existing record instead of blocking
@@ -55,6 +57,7 @@ class StoreFacultyAttendanceRecordRequest extends FormRequest
         return [
             'student_name.required' => 'Please provide the student name.',
             'student_class.required' => 'Please provide the class.',
+            'subject_code.required' => 'Please select a subject.',
             'attendance_date.required' => 'Please select an attendance date.',
             'status.required' => 'Please select an attendance status.',
         ];

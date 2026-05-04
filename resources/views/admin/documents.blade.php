@@ -5,11 +5,13 @@
 <div class="space-y-6">
     {{-- Summary --}}
     <div class="grid gap-4 sm:grid-cols-4">
-        @foreach([['Pending','8','amber'],['Processing','5','sky'],['Completed','34','emerald'],['Total','47','slate']] as [$lbl,$val,$clr])
-            @php $c = match($clr){'amber'=>['bg-amber-50','border-amber-200','text-amber-700'],'sky'=>['bg-sky-50','border-sky-200','text-sky-700'],'emerald'=>['bg-emerald-50','border-emerald-200','text-emerald-700'],default=>['bg-white','border-slate-200','text-slate-900']}; @endphp
+        @foreach($summary as $s)
+            @php $c = match($s['color'] ?? 'slate'){
+                'amber'=>['bg-amber-50','border-amber-200','text-amber-700'],'sky'=>['bg-sky-50','border-sky-200','text-sky-700'],'emerald'=>['bg-emerald-50','border-emerald-200','text-emerald-700'],default=>['bg-white','border-slate-200','text-slate-900']
+            }; @endphp
             <div class="rounded-3xl {{ $c[0] }} border {{ $c[1] }} shadow-sm p-6">
-                <p class="text-xs uppercase tracking-widest font-semibold text-slate-500">{{ $lbl }}</p>
-                <p class="mt-3 text-4xl font-black {{ $c[2] }}">{{ $val }}</p>
+                <p class="text-xs uppercase tracking-widest font-semibold text-slate-500">{{ $s['label'] }}</p>
+                <p class="mt-3 text-4xl font-black {{ $c[2] }}">{{ $s['value'] }}</p>
             </div>
         @endforeach
     </div>
@@ -40,7 +42,7 @@
             </form>
         </div>
 
-        <div class="overflow-x-auto rounded-2xl border border-slate-200">
+        <div class="overflow-x-auto rounded-2xl border border-slate-200" data-live-key="admin.documents.requests">
             <table class="min-w-full text-sm text-left">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>

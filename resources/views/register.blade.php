@@ -235,6 +235,25 @@
             color: rgba(255, 255, 255, 0.72);
         }
 
+        .pw-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.9);
+            width: 36px;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            cursor: pointer;
+            padding: 0;
+        }
+        .pw-toggle:focus { outline: 2px solid rgba(255,255,255,0.18); }
+
         body.page-enter {
             opacity: 0;
             transform: translate3d(0, 16px, 0) scale(0.995);
@@ -404,7 +423,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('register') }}" class="mt-6">
+                <form id="register_form" method="POST" action="{{ route('register') }}" class="mt-6">
                     @csrf
                     <input type="hidden" name="role" id="selected-role" value="{{ old('role', 'student') }}">
 
@@ -424,38 +443,55 @@
                             <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                             </div>
-                            <input type="text" name="name" value="{{ old('name') }}" placeholder="Full name" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-white outline-none transition" required>
+                            <input type="text" name="name" value="{{ old('name') }}" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-white outline-none transition" required>
                         </div>
 
                         <div class="field-wrap relative">
                             <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
                             </div>
-                            <input type="email" name="email" value="{{ old('email') }}" placeholder="your.email@school.edu" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-white outline-none transition" required>
+                            <input type="email" name="email" value="{{ old('email') }}" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-white outline-none transition" required>
                         </div>
 
                         <div class="field-wrap relative">
                             <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                             </div>
-                            <input type="password" name="password" placeholder="Create password" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-white outline-none transition" required>
+                            <input type="password" name="password" class="password-field auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-12 text-sm text-white outline-none transition" required>
+                            <button type="button" class="pw-toggle" aria-label="Toggle password visibility" title="Show password">
+                                <svg class="pw-eye" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
                         </div>
 
                         <div class="field-wrap relative">
                             <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
                             </div>
-                            <input type="password" name="password_confirmation" placeholder="Confirm password" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-white outline-none transition" required>
+                            <input type="password" name="password_confirmation" class="password-field auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-12 text-sm text-white outline-none transition" required>
+                            <button type="button" class="pw-toggle" aria-label="Toggle password visibility" title="Show password">
+                                <svg class="pw-eye" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
                         </div>
 
                         <div class="field-wrap relative student-only-field">
                             <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                             </div>
-                            <select name="enrollment_type" id="enrollment_type" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-slate-800 outline-none transition bg-white/90">
+                            <select name="enrollment_type" id="enrollment_type" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-white outline-none transition">
                                 <option value="" disabled {{ !old('enrollment_type') ? 'selected' : '' }}>Select Student Status</option>
                                 <option value="New Student" {{ old('enrollment_type') == 'New Student' ? 'selected' : '' }}>New Student</option>
                                 <option value="Old Student" {{ old('enrollment_type') == 'Old Student' ? 'selected' : '' }}>Old Student</option>
+                            </select>
+                        </div>
+
+                        <div class="field-wrap relative student-only-field transition-all duration-300 ease-in-out overflow-hidden" id="strand_wrap" style="max-height:0; opacity:0;">
+                            <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"></path></svg>
+                            </div>
+                            <select name="strand" id="strand" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-white outline-none transition">
+                                <option value="" disabled {{ !old('strand') ? 'selected' : '' }}>Select Strand</option>
+                                <option value="ICT" {{ old('strand') == 'ICT' ? 'selected' : '' }}>ICT</option>
+                                <option value="HE" {{ old('strand') == 'HE' ? 'selected' : '' }}>HE</option>
                             </select>
                         </div>
 
@@ -463,7 +499,7 @@
                             <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"></path></svg>
                             </div>
-                            <select name="academic_level" id="academic_level" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-slate-800 outline-none transition bg-white/90">
+                            <select name="academic_level" id="academic_level" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-white outline-none transition">
                                 <option value="" disabled {{ !old('academic_level') ? 'selected' : '' }}>Select Academic Level</option>
                                 <option value="Senior High School" {{ old('academic_level') == 'Senior High School' ? 'selected' : '' }}>Senior High School</option>
                                 <option value="1st Year College" {{ old('academic_level') == '1st Year College' ? 'selected' : '' }}>1st Year College</option>
@@ -476,7 +512,7 @@
                             <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                             </div>
-                            <select name="course" id="course" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-slate-800 outline-none transition bg-white/90">
+                            <select name="course" id="course" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-white outline-none transition">
                                 <option value="" disabled {{ !old('course') ? 'selected' : '' }}>Select Course</option>
                                 <option value="BSIT" {{ old('course') == 'BSIT' ? 'selected' : '' }}>BSIT</option>
                                 <option value="BSHM" {{ old('course') == 'BSHM' ? 'selected' : '' }}>BSHM</option>
@@ -513,6 +549,8 @@
             const academicLevelSelect = document.getElementById('academic_level');
             const courseSelect = document.getElementById('course');
             const courseWrap = document.getElementById('course_wrap');
+            const strandWrap = document.getElementById('strand_wrap');
+            const strandSelect = document.getElementById('strand');
 
             studentFields.forEach(field => {
                 if (role === 'student') {
@@ -531,11 +569,61 @@
                 if (academicLevelSelect.value === 'Senior High School') {
                     courseWrap.style.display = 'none';
                     courseSelect.removeAttribute('required');
+                    courseSelect.setAttribute('disabled', 'disabled');
+                    courseSelect.value = '';
+                    // show strand smoothly and require it
+                    if (strandWrap) {
+                        strandWrap.style.maxHeight = '160px';
+                        strandWrap.style.opacity = '1';
+                        strandSelect?.setAttribute('required', 'required');
+                    }
                 } else {
                     courseWrap.style.display = 'block';
                     courseSelect.setAttribute('required', 'required');
+                    courseSelect.removeAttribute('disabled');
+                    // hide strand instantly and clear value
+                    if (strandWrap) {
+                        strandWrap.style.maxHeight = '0';
+                        strandWrap.style.opacity = '0';
+                        strandSelect?.removeAttribute('required');
+                        strandSelect.value = '';
+                    }
                 }
             }
+
+            // Listen for academic level changes to toggle Strand live and disable/enable Course
+            document.getElementById('academic_level')?.addEventListener('change', function (ev) {
+                const val = ev.target.value;
+                if (val === 'Senior High School') {
+                    // hide/disable course
+                    if (courseWrap) courseWrap.style.display = 'none';
+                    if (courseSelect) {
+                        courseSelect.removeAttribute('required');
+                        courseSelect.setAttribute('disabled', 'disabled');
+                        courseSelect.value = '';
+                    }
+                    // show strand and require it
+                    if (strandWrap) {
+                        strandWrap.style.maxHeight = '160px';
+                        strandWrap.style.opacity = '1';
+                        strandSelect?.setAttribute('required', 'required');
+                    }
+                } else {
+                    // show/enable course
+                    if (courseWrap) courseWrap.style.display = 'block';
+                    if (courseSelect) {
+                        courseSelect.setAttribute('required', 'required');
+                        courseSelect.removeAttribute('disabled');
+                    }
+                    // hide strand and clear
+                    if (strandWrap) {
+                        strandWrap.style.maxHeight = '0';
+                        strandWrap.style.opacity = '0';
+                        strandSelect?.removeAttribute('required');
+                        strandSelect.value = '';
+                    }
+                }
+            });
         }
 
         document.addEventListener('DOMContentLoaded', function () {
@@ -554,10 +642,23 @@
                         if (this.value === 'Senior High School') {
                             courseWrap.style.display = 'none';
                             courseSelect.removeAttribute('required');
+                            courseSelect.setAttribute('disabled', 'disabled');
                             courseSelect.value = '';
+                            if (strandWrap) {
+                                strandWrap.style.maxHeight = '160px';
+                                strandWrap.style.opacity = '1';
+                                strandSelect?.setAttribute('required', 'required');
+                            }
                         } else {
                             courseWrap.style.display = 'block';
                             courseSelect.setAttribute('required', 'required');
+                            courseSelect.removeAttribute('disabled');
+                            if (strandWrap) {
+                                strandWrap.style.maxHeight = '0';
+                                strandWrap.style.opacity = '0';
+                                strandSelect?.removeAttribute('required');
+                                strandSelect.value = '';
+                            }
                         }
                     }
                 });
@@ -600,6 +701,59 @@
 
             setRole(@json(old('role', 'student')));
 
+            // Initialize strand and course state based on the current academic level
+            (function initStrandCourseState() {
+                const role = document.getElementById('selected-role').value;
+                if (role === 'student' && academicLevelSelect) {
+                    if (academicLevelSelect.value === 'Senior High School') {
+                        courseWrap.style.display = 'none';
+                        courseSelect.removeAttribute('required');
+                        courseSelect.setAttribute('disabled', 'disabled');
+                        if (strandWrap) {
+                            strandWrap.style.maxHeight = '160px';
+                            strandWrap.style.opacity = '1';
+                            strandSelect?.setAttribute('required', 'required');
+                        }
+                    } else {
+                        courseWrap.style.display = 'block';
+                        courseSelect.setAttribute('required', 'required');
+                        courseSelect.removeAttribute('disabled');
+                        if (strandWrap) {
+                            strandWrap.style.maxHeight = '0';
+                            strandWrap.style.opacity = '0';
+                            strandSelect?.removeAttribute('required');
+                            strandSelect.value = '';
+                        }
+                    }
+                }
+            })();
+
+            // Form submit validation: require strand when visible and clear hidden fields
+            const registerForm = document.getElementById('register_form');
+            if (registerForm) {
+                registerForm.addEventListener('submit', function (ev) {
+                    if (strandSelect && strandSelect.required && !strandSelect.value) {
+                        ev.preventDefault();
+                        strandSelect.setCustomValidity('Please select a strand for Senior High School');
+                        strandSelect.reportValidity();
+                        strandSelect.focus();
+                        return;
+                    }
+
+                    if (academicLevelSelect && academicLevelSelect.value === 'Senior High School') {
+                        courseSelect.value = '';
+                        courseSelect.setAttribute('disabled', 'disabled');
+                        courseSelect.removeAttribute('required');
+                    } else {
+                        courseSelect.removeAttribute('disabled');
+                    }
+
+                    if (strandSelect && !strandSelect.required) {
+                        strandSelect.value = '';
+                    }
+                });
+            }
+
             document.querySelectorAll('a[data-page-transition]').forEach(function (link) {
                 link.addEventListener('click', function (event) {
                     if (prefersReducedMotion || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
@@ -620,6 +774,25 @@
                     }, 240);
                 });
             });
+
+            // Attach password toggle buttons behavior
+            (function attachPwToggles() {
+                document.querySelectorAll('.pw-toggle').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        const wrap = btn.closest('.field-wrap');
+                        if (!wrap) return;
+                        const input = wrap.querySelector('input.password-field') || wrap.querySelector('input[type="password"]');
+                        if (!input) return;
+                        if (input.type === 'password') {
+                            input.type = 'text';
+                            btn.title = 'Hide password';
+                        } else {
+                            input.type = 'password';
+                            btn.title = 'Show password';
+                        }
+                    });
+                });
+            })();
         });
     </script>
 </body>

@@ -113,12 +113,12 @@
                 </div>
             </div>
 
-            {{-- Course Filter --}}
+            {{-- Subject Filter --}}
             @if(count($courseOptions) > 0)
                 <form method="GET" action="{{ route('admin.enrollments') }}" class="mb-6 flex flex-wrap gap-3 items-center">
                     <input type="hidden" name="tab" value="{{ $tab }}">
-                    <select name="course" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-400">
-                        <option value="">All Courses</option>
+                    <select name="course" aria-label="Subject" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-green-400">
+                        <option value="">All Subjects</option>
                         @foreach($courseOptions as $opt)
                             <option value="{{ $opt['code'] }}" {{ $courseFilter === $opt['code'] ? 'selected' : '' }}>
                                 {{ $opt['name'] }} ({{ $opt['code'] }})

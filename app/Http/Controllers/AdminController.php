@@ -14,6 +14,9 @@ use App\Models\User;
 use App\Services\StudentBulkImportService;
 use App\Services\SystemSettingsService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\ForumThread;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -306,17 +309,19 @@ class AdminController extends Controller
         ];
 
         $records = (clone $baseQuery)
-            ->with(['faculty:id,name'])
+            ->with(['faculty:id,name','studentUser:id,course,academic_level'])
             ->orderByDesc('attendance_date')
             ->orderBy('student_name')
             ->paginate(12)
             ->withQueryString();
 
-        $classOptions = FacultyAttendanceRecord::query()
-            ->select('student_class')
+        $courseOptions = User::query()
+            ->where('role', 'student')
+            ->whereNotNull('course')
+            ->select('course')
             ->distinct()
-            ->orderBy('student_class')
-            ->pluck('student_class')
+            ->orderBy('course')
+            ->pluck('course')
             ->all();
 
         $facultyOptions = User::query()
@@ -332,7 +337,7 @@ class AdminController extends Controller
             })
             ->all();
 
-        return view('admin.attendance', compact('summary', 'records', 'filters', 'activeFilters', 'classOptions', 'facultyOptions'));
+        return view('admin.attendance', compact('summary', 'records', 'filters', 'activeFilters', 'courseOptions', 'facultyOptions'));
     }
 
     public function exportAttendance(Request $request)
@@ -344,7 +349,8 @@ class AdminController extends Controller
         $records = $baseQuery->get()->map(function ($r) {
             return [
                 'student_name' => $r->student_name,
-                'student_class' => $r->student_class,
+                'student_course' => $r->studentUser->course ?? $r->student_course ?? '',
+                'student_academic_level' => $r->studentUser->academic_level ?? $r->student_academic_level ?? '',
                 'faculty' => $r->faculty?->name ?? '',
                 'attendance_date' => $r->attendance_date?->format('Y-m-d') ?? '',
                 'status' => $r->status,
@@ -371,7 +377,7 @@ class AdminController extends Controller
                 return;
             }
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Student Name', 'Class', 'Faculty', 'Date', 'Status', 'Notes']);
+            fputcsv($out, ['Student Name', 'Course', 'Academic Level', 'Faculty', 'Date', 'Status', 'Notes']);
             foreach ($records as $row) {
                 fputcsv($out, array_values((array) $row));
             }
@@ -381,12 +387,20 @@ class AdminController extends Controller
 
     public function grades(Request $request): View
     {
+        $statusFilter = $request->query('status', '');
         $subjectFilter = $request->query('subject', '');
         $academicLevelFilter = $request->query('academic_level', '');
         $courseFilter = $request->query('course', '');
 
         $coursesData = StudentModuleRecord::query()
             ->whereNotNull('grade_percent')
+            ->when($statusFilter !== '', function ($q) use ($statusFilter) {
+                if ($statusFilter === 'Pending') {
+                    $q->where('grade_verified', false);
+                } elseif ($statusFilter === 'Verified') {
+                    $q->where('grade_verified', true);
+                }
+            })
             ->when($subjectFilter !== '', function ($query) use ($subjectFilter) {
                 return $query->where('module_code', $subjectFilter);
             })
@@ -432,6 +446,13 @@ class AdminController extends Controller
         $allGradesQuery = StudentModuleRecord::query()
             ->with(['user:id,name,academic_level,course'])
             ->whereNotNull('grade_percent')
+            ->when($statusFilter !== '', function ($q) use ($statusFilter) {
+                if ($statusFilter === 'Pending') {
+                    $q->where('grade_verified', false);
+                } elseif ($statusFilter === 'Verified') {
+                    $q->where('grade_verified', true);
+                }
+            })
             ->when($subjectFilter !== '', function ($query) use ($subjectFilter) {
                 return $query->where('module_code', $subjectFilter);
             })
@@ -446,9 +467,7 @@ class AdminController extends Controller
                 });
             });
 
-        // Unverified grades for the unverified section
-        $unverifiedGrades = (clone $allGradesQuery)->where('grade_verified', false)->get();
-        // All grades for the admin override table
+        // All grades for the consolidated admin table (supports status filtering)
         $allGrades = $allGradesQuery->paginate(15)->withQueryString();
 
         $subjectOptions = StudentModuleRecord::query()
@@ -459,7 +478,21 @@ class AdminController extends Controller
             ->map(fn ($r) => ['code' => $r->module_code, 'name' => $r->module_name])
             ->all();
 
-        return view('admin.grades', compact('courses', 'unverifiedGrades', 'allGrades', 'subjectFilter', 'subjectOptions', 'academicLevelFilter', 'courseFilter'));
+        // Compute overview metrics from the filtered grades set
+        $allFiltered = (clone $allGradesQuery)->get();
+        $overallAverage = $allFiltered->count() ? round($allFiltered->avg('grade_percent'), 1) : 0;
+        $passingRate = $allFiltered->count() ? round(($allFiltered->where('grade_percent', '>=', 75)->count() / $allFiltered->count()) * 100) : 0;
+        $studentsGraded = $allFiltered->pluck('user_id')->unique()->count();
+        $coursesMonitored = $allFiltered->pluck('module_code')->unique()->count();
+
+        $overview = [
+            ['label' => 'Overall Average', 'value' => $overallAverage.'%', 'color' => 'emerald'],
+            ['label' => 'Passing Rate', 'value' => $passingRate.'%', 'color' => 'sky'],
+            ['label' => 'Students Graded', 'value' => (string) $studentsGraded, 'color' => 'slate'],
+            ['label' => 'Courses Monitored', 'value' => (string) $coursesMonitored, 'color' => 'slate'],
+        ];
+
+        return view('admin.grades', compact('courses', 'allGrades', 'subjectFilter', 'subjectOptions', 'academicLevelFilter', 'courseFilter', 'overview', 'statusFilter'));
     }
 
     public function verifyGrade(StudentModuleRecord $moduleRecord): RedirectResponse
@@ -505,7 +538,7 @@ class AdminController extends Controller
             }
 
             fwrite($output, "\xEF\xBB\xBF");
-            fputcsv($output, ['Student Name', 'Student Email', 'Academic Level', 'Course', 'Module Name', 'Module Code', 'Instructor', 'Raw Grade', 'GPA Equivalent']);
+            fputcsv($output, ['Student Name', 'Student Email', 'Module Name', 'Module Code', 'Instructor', 'Schedule', 'Grade Percent']);
 
             foreach ($records as $record) {
                 $raw = (float) $record->grade_percent;
@@ -535,13 +568,11 @@ class AdminController extends Controller
                 fputcsv($output, [
                     $record->user?->name ?? 'Unknown Student',
                     $record->user?->email ?? '',
-                    $record->user?->academic_level ?? '',
-                    $record->user?->course ?? '',
                     $record->module_name,
                     $record->module_code,
                     $record->instructor ?? '',
-                    $raw,
-                    $gpa,
+                    $record->schedule ?? '',
+                    number_format($raw, 2),
                 ]);
             }
 
@@ -609,7 +640,19 @@ class AdminController extends Controller
             ];
         })->all();
 
-        return view('admin.documents', compact('requests', 'search', 'type', 'status'));
+        $pending = DocumentRequest::where('status', 'Pending')->count();
+        $processing = DocumentRequest::where('status', 'Processing')->count();
+        $completed = DocumentRequest::where('status', 'Completed')->count();
+        $total = DocumentRequest::count();
+
+        $summary = [
+            ['label' => 'Pending', 'value' => (string) $pending, 'color' => 'amber'],
+            ['label' => 'Processing', 'value' => (string) $processing, 'color' => 'sky'],
+            ['label' => 'Completed', 'value' => (string) $completed, 'color' => 'emerald'],
+            ['label' => 'Total', 'value' => (string) $total, 'color' => 'slate'],
+        ];
+
+        return view('admin.documents', compact('requests', 'search', 'type', 'status', 'summary'));
     }
 
     public function updateDocument(Request $request, DocumentRequest $documentRequest): RedirectResponse
@@ -625,16 +668,28 @@ class AdminController extends Controller
 
     public function forum(): View
     {
-        $threads = [
-            ['title' => 'Staff meeting agenda', 'activity' => '6 comments'],
-            ['title' => 'System update schedule', 'activity' => '3 comments'],
+        $threads = ForumThread::with('user')
+            ->latest()
+            ->limit(12)
+            ->get();
+
+        $totalPosts = ForumThread::count();
+        $totalThreads = $totalPosts; // threads represent top-level posts
+        $distinctUsers = ForumThread::select('user_id')->distinct()->count();
+        $flagged = ForumThread::where('status', 'flagged')->count();
+
+        $stats = [
+            ['label' => 'Total Posts', 'value' => (string) $totalPosts, 'color' => 'slate'],
+            ['label' => 'Total Threads', 'value' => (string) $totalThreads, 'color' => 'slate'],
+            ['label' => 'Flagged', 'value' => (string) $flagged, 'color' => 'rose'],
+            ['label' => 'Active Users', 'value' => (string) $distinctUsers, 'color' => 'emerald'],
         ];
 
-        return view('admin.forum', compact('threads'));
+        return view('admin.forum', compact('threads', 'stats'));
     }
 
     /**
-     * @return array{search: string, status: string, student_class: string, faculty_user_id: string, from_date: string, to_date: string}
+    * @return array{search: string, status: string, faculty_user_id: string, academic_level: string, course: string, from_date: string, to_date: string}
      */
     private function resolveAttendanceFilters(Request $request): array
     {
@@ -655,7 +710,6 @@ class AdminController extends Controller
         return [
             'search' => trim((string) $request->query('search', '')),
             'status' => $status,
-            'student_class' => trim((string) $request->query('student_class', '')),
             'faculty_user_id' => $facultyUserId,
             'academic_level' => $academicLevel,
             'course' => $course,
@@ -665,7 +719,7 @@ class AdminController extends Controller
     }
 
     /**
-     * @param  array{search: string, status: string, student_class: string, faculty_user_id: string, from_date: string, to_date: string}  $filters
+     * @param  array{search: string, status: string, faculty_user_id: string, academic_level: string, course: string, from_date: string, to_date: string}  $filters
      */
     private function queryAttendanceRecords(array $filters): Builder
     {
@@ -696,9 +750,7 @@ class AdminController extends Controller
             ->when($filters['status'] !== '', function (Builder $query) use ($filters): void {
                 $query->where('status', $filters['status']);
             })
-            ->when($filters['student_class'] !== '', function (Builder $query) use ($filters): void {
-                $query->where('student_class', $filters['student_class']);
-            })
+            
             ->when($filters['faculty_user_id'] !== '', function (Builder $query) use ($filters): void {
                 $query->where('faculty_user_id', (int) $filters['faculty_user_id']);
             })
@@ -879,37 +931,48 @@ class AdminController extends Controller
     public function systemMonitoring(): View
     {
         $serverStats = [
-            ['label' => 'CPU Usage',    'value' => 34,  'unit' => '%',  'color' => 'emerald', 'status' => 'Normal'],
-            ['label' => 'Memory Usage', 'value' => 61,  'unit' => '%',  'color' => 'amber',   'status' => 'Moderate'],
-            ['label' => 'Disk Usage',   'value' => 47,  'unit' => '%',  'color' => 'sky',     'status' => 'Normal'],
-            ['label' => 'Network I/O',  'value' => 18,  'unit' => 'MB/s', 'color' => 'violet', 'status' => 'Normal'],
+            ['label' => 'CPU Usage',    'value' => 0,  'unit' => '%',  'color' => 'emerald', 'status' => 'Normal'],
+            ['label' => 'Memory Usage', 'value' => 0,  'unit' => '%',  'color' => 'amber',   'status' => 'Moderate'],
+            ['label' => 'Disk Usage',   'value' => 0,  'unit' => '%',  'color' => 'sky',     'status' => 'Normal'],
+            ['label' => 'Network I/O',  'value' => 0,  'unit' => 'MB/s', 'color' => 'violet', 'status' => 'Normal'],
         ];
 
         $platformStats = [
-            ['label' => 'Total Users',          'value' => '134',  'icon' => 'users'],
-            ['label' => 'Active Sessions',       'value' => '12',   'icon' => 'activity'],
-            ['label' => 'Total Classrooms',      'value' => '8',    'icon' => 'classroom'],
-            ['label' => 'Attendance Records',    'value' => '1,204', 'icon' => 'check'],
-            ['label' => 'Document Requests',     'value' => '47',   'icon' => 'doc'],
-            ['label' => 'Forum Posts',           'value' => '89',   'icon' => 'chat'],
+            ['label' => 'Total Users',          'value' => (string) User::count(),
+                'icon' => 'users'],
+            ['label' => 'Total Classrooms',      'value' => (string) Classroom::count(),
+                'icon' => 'classroom'],
+            ['label' => 'Attendance Records',    'value' => (string) FacultyAttendanceRecord::count(),
+                'icon' => 'check'],
+            ['label' => 'Document Requests',     'value' => (string) DocumentRequest::count(),
+                'icon' => 'doc'],
+            ['label' => 'Forum Posts',           'value' => (string) ForumThread::count(),
+                'icon' => 'chat'],
         ];
 
-        $registrationTrend = [
-            ['month' => 'Nov', 'students' => 12, 'faculty' => 2],
-            ['month' => 'Dec', 'students' => 8,  'faculty' => 0],
-            ['month' => 'Jan', 'students' => 31, 'faculty' => 3],
-            ['month' => 'Feb', 'students' => 24, 'faculty' => 1],
-            ['month' => 'Mar', 'students' => 38, 'faculty' => 4],
-            ['month' => 'Apr', 'students' => 21, 'faculty' => 2],
-        ];
+        // Registration trend for the past 6 months
+        $months = collect();
+        for ($i = 5; $i >= 0; $i--) {
+            $m = Carbon::now()->subMonths($i);
+            $months->push($m->format('M'));
+        }
+
+        $registrations = User::selectRaw('MONTH(created_at) as month, role, COUNT(*) as cnt')
+            ->where('created_at', '>=', Carbon::now()->subMonths(6))
+            ->groupBy('month', 'role')
+            ->get()
+            ->groupBy(['month', 'role']);
+
+        $registrationTrend = $months->map(function ($label, $idx) use ($registrations) {
+            $monthNum = Carbon::now()->subMonths(5 - $idx)->month;
+            $students = $registrations[$monthNum]['student']->sum('cnt') ?? 0;
+            $faculty = $registrations[$monthNum]['faculty']->sum('cnt') ?? 0;
+            return ['month' => $label, 'students' => $students, 'faculty' => $faculty];
+        })->all();
 
         $healthChecks = [
-            ['name' => 'Database Connection',  'status' => 'ok',      'detail' => 'MySQL connected'],
-            ['name' => 'Cache (Redis)',         'status' => 'ok',      'detail' => 'Redis responding'],
-            ['name' => 'Email Server',         'status' => 'ok',      'detail' => 'SMTP reachable'],
-            ['name' => 'File Storage',         'status' => 'ok',      'detail' => 'Disk writable'],
-            ['name' => 'Queue Worker',         'status' => 'warning', 'detail' => '2 failed jobs pending'],
-            ['name' => 'SSL Certificate',      'status' => 'ok',      'detail' => 'Expires in 88 days'],
+            ['name' => 'Database Connection',  'status' => DB::select("SELECT 1 AS ok") ? 'ok' : 'error', 'detail' => 'MySQL reachable'],
+            ['name' => 'File Storage',         'status' => is_writable(storage_path('app')) ? 'ok' : 'error', 'detail' => 'Storage writable check'],
         ];
 
         return view('admin.system-monitoring', compact('serverStats', 'platformStats', 'registrationTrend', 'healthChecks'));

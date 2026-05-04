@@ -389,12 +389,23 @@ class FacultyController extends Controller
             $this->authorize('manage', $classroom);
         }
 
-        // Prevent duplicate attendance records for same student_class/date/name
-        $existing = FacultyAttendanceRecord::query()
-            ->where('student_name', $data['student_name'])
-            ->where('student_class', $data['student_class'])
+        // Prevent duplicate attendance records for same student/date/faculty/subject
+        $existingQuery = FacultyAttendanceRecord::query()
             ->whereDate('attendance_date', $data['attendance_date'])
-            ->first();
+            ->where('faculty_user_id', Auth::id());
+
+        if (! empty($data['subject_code'])) {
+            $existingQuery->where('subject_code', $data['subject_code']);
+        }
+
+        if (! empty($data['student_user_id'])) {
+            $existingQuery->where('student_user_id', $data['student_user_id']);
+        } else {
+            // fallback to name-based matching when user id is not provided
+            $existingQuery->where('student_name', $data['student_name']);
+        }
+
+        $existing = $existingQuery->first();
 
         if ($existing) {
             // If request asks to update existing record, perform update
@@ -413,10 +424,22 @@ class FacultyController extends Controller
         }
 
         try {
-            FacultyAttendanceRecord::query()->create([
+            // capture student snapshot data (course, academic_level) if mapped
+            $studentCourse = null;
+            $studentLevel = null;
+            if (! empty($data['student_user_id'])) {
+                $user = User::find($data['student_user_id']);
+                if ($user !== null) {
+                    $studentCourse = $user->course;
+                    $studentLevel = $user->academic_level;
+                }
+            }
+
+            FacultyAttendanceRecord::query()->create(array_merge([
                 'faculty_user_id' => Auth::id(),
-                ...$data,
-            ]);
+                'student_course' => $studentCourse,
+                'student_academic_level' => $studentLevel,
+            ], $data));
 
             return redirect()
                 ->route('faculty.grades')

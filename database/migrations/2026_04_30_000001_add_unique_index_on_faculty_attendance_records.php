@@ -31,7 +31,11 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('faculty_attendance_records', function (Blueprint $table): void {
-            $table->dropUnique('fac_attendance_unique');
+            try {
+                $table->dropUnique('fac_attendance_unique');
+            } catch (\Exception $e) {
+                // ignore if index does not exist
+            }
         });
     }
 };

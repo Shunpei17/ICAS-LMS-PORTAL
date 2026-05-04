@@ -214,5 +214,79 @@
             });
         });
     </script>
+    <script>
+        // Live fragment refresher: looks for elements with `data-live-key` and polls the current page
+        (function () {
+            const POLL_INTERVAL = 7000; // ms
+
+            async function refreshFragment(key) {
+                try {
+                    const res = await fetch(window.location.href, { cache: 'no-store' });
+                    if (!res.ok) return;
+                    const text = await res.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(text, 'text/html');
+                    const newNode = doc.querySelector('[data-live-key="' + key + '"]');
+                    const oldNode = document.querySelector('[data-live-key="' + key + '"]');
+                    if (newNode && oldNode && newNode.innerHTML !== oldNode.innerHTML) {
+                        oldNode.innerHTML = newNode.innerHTML;
+                    }
+                } catch (e) {
+                    // ignore network errors
+                }
+            }
+
+            function startPolling() {
+                const nodes = Array.from(document.querySelectorAll('[data-live-key]'));
+                if (nodes.length === 0) return;
+                setInterval(function () {
+                    nodes.forEach(n => refreshFragment(n.getAttribute('data-live-key')));
+                }, POLL_INTERVAL);
+            }
+
+            document.addEventListener('DOMContentLoaded', startPolling);
+        })();
+    </script>
+    <script src="https://js.pusher.com/8.0/pusher.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.11.3/dist/echo.iife.js"></script>
+    <script>
+        // Optional: Laravel Echo listener (requires BROADCAST_DRIVER configured and Pusher keys)
+        (function () {
+            try {
+                if (!window.Pusher) return;
+
+                Pusher.logToConsole = false;
+
+                const pusherKey = '{{ env('PUSHER_APP_KEY', '') }}';
+                const pusherCluster = '{{ env('PUSHER_APP_CLUSTER', '') }}';
+
+                if (!pusherKey) return;
+
+                const echo = new window.Echo({
+                    broadcaster: 'pusher',
+                    key: pusherKey,
+                    cluster: pusherCluster || undefined,
+                    forceTLS: true,
+                    encrypted: true,
+                });
+
+                echo.channel('admin').listen('AdminModelChanged', function (payload) {
+                    // on any admin model change, refresh all live fragments immediately
+                    document.querySelectorAll('[data-live-key]').forEach(function (el) {
+                        const key = el.getAttribute('data-live-key');
+                        // reuse existing refresh logic: fetch current page and swap fragment
+                        fetch(window.location.href, { cache: 'no-store' }).then(r => r.text()).then(text => {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(text, 'text/html');
+                            const newNode = doc.querySelector('[data-live-key="' + key + '"]');
+                            if (newNode) el.innerHTML = newNode.innerHTML;
+                        }).catch(() => {});
+                    });
+                });
+            } catch (e) {
+                // silent
+            }
+        })();
+    </script>
 </body>
 </html>

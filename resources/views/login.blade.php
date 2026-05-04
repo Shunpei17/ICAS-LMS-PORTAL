@@ -235,6 +235,26 @@
             color: rgba(255, 255, 255, 0.72);
         }
 
+        /* Password toggle button inside inputs */
+        .pw-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: rgba(255,255,255,0.9);
+            width: 36px;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            cursor: pointer;
+            padding: 0;
+        }
+        .pw-toggle:focus { outline: 2px solid rgba(255,255,255,0.18); }
+
         body.page-enter {
             opacity: 0;
             transform: translate3d(0, 16px, 0) scale(0.995);
@@ -425,12 +445,14 @@
                 @endif
 
                 @if(session('show_verification'))
-                <form method="POST" action="{{ route('verify.upload') }}" class="mt-5" id="verifyForm" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('verify.upload') }}" class="mt-5 space-y-4" id="verifyForm" enctype="multipart/form-data">
                     @csrf
-                    <div class="alert alert-warning bg-amber-100 text-amber-800 p-4 rounded-xl mb-4 text-sm font-semibold border border-amber-200">
-                        Verification Required. Please upload the necessary documents to activate your account.
+                    <div class="rounded-2xl bg-white/10 p-4 text-sm text-white/90">
+                        <div class="font-semibold">Verification Required</div>
+                        <div class="mt-1 text-xs text-white/80">Please upload the necessary documents to activate your account.</div>
                     </div>
-                    
+
+                    <div class="space-y-3">
                         @if(session('enrollment_type') === 'New Student')
                             <div class="field-wrap">
                                 <label class="block text-xs font-bold uppercase tracking-[0.1em] text-white/90 mb-2">Section 1: Receipt Proof (Payment Verification)</label>
@@ -444,12 +466,12 @@
                         @endif
                     </div>
 
-                    <button type="submit" class="primary-action mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold uppercase tracking-[0.12em] active:scale-[0.99]">
+                    <button type="submit" class="primary-action mt-2 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-bold uppercase tracking-[0.12em] active:scale-[0.99]">
                         Submit Verification
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
                     </button>
-                    
-                    <p class="mt-4 text-center text-sm text-white/90">
+
+                    <p class="mt-2 text-center text-sm text-white/90">
                         <a href="{{ route('login') }}" class="font-semibold hover:text-white">Back to Login</a>
                     </p>
                 </form>
@@ -485,7 +507,10 @@
                             <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                             </div>
-                            <input type="password" name="password" placeholder="Enter your password" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-white outline-none transition" required>
+                            <input type="password" name="password" placeholder="Enter your password" class="password-field auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-12 text-sm text-white outline-none transition" required>
+                            <button type="button" class="pw-toggle" aria-label="Toggle password visibility" title="Show password">
+                                <svg class="pw-eye" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
                         </div>
                     </div>
 
@@ -601,6 +626,26 @@
                     }, 240);
                 });
             });
+
+            // Password toggle logic
+            (function attachPwToggles() {
+                document.querySelectorAll('.pw-toggle').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        const wrap = btn.closest('.field-wrap');
+                        if (!wrap) return;
+                        const input = wrap.querySelector('input.password-field') || wrap.querySelector('input[type="password"]');
+                        if (!input) return;
+                        if (input.type === 'password') {
+                            input.type = 'text';
+                            btn.title = 'Hide password';
+                            btn.querySelector('.pw-eye')?.setAttribute('d','');
+                        } else {
+                            input.type = 'password';
+                            btn.title = 'Show password';
+                        }
+                    });
+                });
+            })();
         });
     </script>
 </body>

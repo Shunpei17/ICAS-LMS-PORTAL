@@ -67,4 +67,16 @@ class Classroom extends Model
 
         return $avg !== null ? (float) $avg : null;
     }
+
+    protected static function booted(): void
+    {
+        static::created(function ($model) {
+            event(new \App\Events\AdminModelChanged('classroom', $model->id, 'created'));
+        });
+
+        // only notify on create/delete to avoid frequent update noise
+        static::deleted(function ($model) {
+            event(new \App\Events\AdminModelChanged('classroom', $model->id, 'deleted'));
+        });
+    }
 }

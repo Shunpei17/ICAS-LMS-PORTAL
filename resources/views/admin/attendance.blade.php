@@ -37,12 +37,7 @@
                         <option value="Late" @selected($filters['status'] === 'Late')>Late</option>
                     </select>
 
-                    <select name="student_class" class="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none">
-                        <option value="" @selected($filters['student_class'] === '')>All Classes</option>
-                        @foreach($classOptions as $classOption)
-                            <option value="{{ $classOption }}" @selected($filters['student_class'] === $classOption)>{{ $classOption }}</option>
-                        @endforeach
-                    </select>
+                    {{-- Class filter removed; replaced by Course and Academic Level filters --}}
 
                     <select name="academic_level" class="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none">
                         <option value="" @selected(($filters['academic_level'] ?? '') === '')>All Levels</option>
@@ -54,8 +49,9 @@
 
                     <select name="course" class="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none">
                         <option value="" @selected(($filters['course'] ?? '') === '')>All Courses</option>
-                        <option value="BSIT" @selected(($filters['course'] ?? '') === 'BSIT')>BSIT</option>
-                        <option value="BSHM" @selected(($filters['course'] ?? '') === 'BSHM')>BSHM</option>
+                        @foreach(($courseOptions ?? []) as $courseOpt)
+                            <option value="{{ $courseOpt }}" @selected(($filters['course'] ?? '') === $courseOpt)>{{ $courseOpt }}</option>
+                        @endforeach
                     </select>
 
                     <select name="faculty_user_id" class="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none">
@@ -103,7 +99,8 @@
                     <thead>
                         <tr>
                             <th class="px-4 py-4 font-semibold text-slate-500">Student</th>
-                            <th class="px-4 py-4 font-semibold text-slate-500">Class</th>
+                            <th class="px-4 py-4 font-semibold text-slate-500">Course</th>
+                            <th class="px-4 py-4 font-semibold text-slate-500">Academic Level</th>
                             <th class="px-4 py-4 font-semibold text-slate-500">Faculty</th>
                             <th class="px-4 py-4 font-semibold text-slate-500">Date</th>
                             <th class="px-4 py-4 font-semibold text-slate-500">Status</th>
@@ -118,7 +115,8 @@
                                         <span class="font-medium text-slate-900">{{ $record->student_name }}</span>
                                     </div>
                                 </td>
-                                <td class="px-4 py-4">{{ $record->student_class }}</td>
+                                <td class="px-4 py-4">{{ $record->studentUser?->course ?? $record->student_course ?? '-' }}</td>
+                                <td class="px-4 py-4">{{ $record->studentUser?->academic_level ?? $record->student_academic_level ?? '-' }}</td>
                                 <td class="px-4 py-4">{{ $record->faculty?->name ?? 'Unknown Faculty' }}</td>
                                 <td class="px-4 py-4">{{ $record->attendance_date?->format('n/j/Y') ?? '-' }}</td>
                                 <td class="px-4 py-4">

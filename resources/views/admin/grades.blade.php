@@ -13,6 +13,11 @@
             </div>
             <div class="flex items-center gap-3">
                 <form action="{{ route('admin.grades') }}" method="GET" class="flex flex-wrap items-center gap-2">
+                    <select name="status" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        <option value="Pending" @selected(($statusFilter ?? '') === 'Pending')>Pending</option>
+                        <option value="Verified" @selected(($statusFilter ?? '') === 'Verified')>Verified</option>
+                    </select>
                     <select name="academic_level" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white" onchange="this.form.submit()">
                         <option value="">All Levels</option>
                         <option value="Senior High School" @selected($academicLevelFilter === 'Senior High School')>Senior High</option>
@@ -52,11 +57,13 @@
 
     {{-- Overall Stats --}}
     <div class="grid gap-4 sm:grid-cols-4">
-        @foreach([['Overall Average','84.6%','emerald'],['Passing Rate','91%','sky'],['Students Graded','98','slate'],['Courses Monitored','5','slate']] as [$l,$v,$c])
-            @php $cc=match($c){'emerald'=>['bg-emerald-50','border-emerald-200','text-emerald-700'],'sky'=>['bg-sky-50','border-sky-200','text-sky-700'],default=>['bg-white','border-slate-200','text-slate-900']}; @endphp
+        @foreach($overview as $o)
+            @php $cc=match($o['color'] ?? 'slate'){
+                'emerald'=>['bg-emerald-50','border-emerald-200','text-emerald-700'],'sky'=>['bg-sky-50','border-sky-200','text-sky-700'],default=>['bg-white','border-slate-200','text-slate-900']
+            }; @endphp
             <div class="rounded-3xl {{ $cc[0] }} border {{ $cc[1] }} shadow-sm p-6">
-                <p class="text-xs uppercase tracking-widest font-semibold text-slate-500">{{ $l }}</p>
-                <p class="mt-3 text-4xl font-black {{ $cc[2] }}">{{ $v }}</p>
+                <p class="text-xs uppercase tracking-widest font-semibold text-slate-500">{{ $o['label'] }}</p>
+                <p class="mt-3 text-4xl font-black {{ $cc[2] }}">{{ $o['value'] }}</p>
             </div>
         @endforeach
     </div>
@@ -121,92 +128,59 @@
         </div>
     </section>
 
-    {{-- Unverified Grades --}}
-    @if($unverifiedGrades->isNotEmpty())
-    <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-6">
-        <h3 class="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-            Unverified Grades
-            <span class="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full">{{ $unverifiedGrades->count() }} pending</span>
-        </h3>
-        
-        <div class="overflow-x-auto rounded-2xl border border-slate-200">
-            <table class="min-w-full text-sm text-left">
-                <thead class="bg-slate-50 border-b border-slate-200">
-                    <tr>
-                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Student</th>
-                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Course</th>
-                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Grade</th>
-                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide text-right">Action</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    @foreach($unverifiedGrades as $grade)
-                    <tr class="hover:bg-slate-50 transition-colors">
-                        <td class="px-5 py-3.5 font-semibold text-slate-900">{{ $grade->user->name ?? 'Unknown' }}</td>
-                        <td class="px-5 py-3.5 text-slate-700">{{ $grade->module_name }} <span class="text-xs text-slate-400">({{ $grade->module_code }})</span></td>
-                        <td class="px-5 py-3.5 text-slate-900 font-bold">{{ $grade->grade_percent }}%</td>
-                        <td class="px-5 py-3.5 text-right">
-                            <form action="{{ route('admin.grades.verify', $grade->id) }}" method="POST">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="text-xs font-semibold bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-xl hover:bg-emerald-200 transition">Verify</button>
-                            </form>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </section>
-    @endif
+    {{-- Consolidated Grades Table (All/Pending/Verified) --}}
 </div>
 
     <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-6 mt-6">
         <h3 class="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
-            All Student Grades
+            Student Grade Management
             <span class="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded-full">{{ $allGrades->total() }} total</span>
         </h3>
-        
+
         <div class="overflow-x-auto rounded-2xl border border-slate-200">
             <table class="min-w-full text-sm text-left">
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
-                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Student</th>
-                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Level / Course</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Student Name</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Course</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Level</th>
                         <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Subject</th>
                         <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Grade</th>
-                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide text-right">Action</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Status</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse($allGrades as $grade)
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="px-5 py-3.5 font-semibold text-slate-900">{{ $grade->user->name ?? 'Unknown' }}</td>
-                        <td class="px-5 py-3.5 text-slate-600 text-xs">
-                            {{ $grade->user->academic_level ?? 'N/A' }}<br>
-                            <span class="text-slate-400">{{ $grade->user->course ?? 'N/A' }}</span>
-                        </td>
+                        <td class="px-5 py-3.5 text-slate-400">{{ $grade->user->course ?? 'N/A' }}</td>
+                        <td class="px-5 py-3.5 text-slate-400">{{ $grade->user->academic_level ?? 'N/A' }}</td>
                         <td class="px-5 py-3.5 text-slate-700">{{ $grade->module_name }} <span class="text-xs text-slate-400">({{ $grade->module_code }})</span></td>
+                        <td class="px-5 py-3.5"><span class="font-bold text-slate-900">{{ $grade->grade_percent }}%</span></td>
                         <td class="px-5 py-3.5">
-                            <span class="font-bold text-slate-900">{{ $grade->grade_percent }}%</span>
-                            @if(!$grade->grade_verified)
-                                <span class="ml-2 bg-amber-100 text-amber-700 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">Unverified</span>
+                            @if($grade->grade_verified)
+                                <span class="bg-emerald-100 text-emerald-700 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">Verified</span>
+                            @else
+                                <span class="bg-amber-100 text-amber-700 text-[10px] uppercase font-bold px-1.5 py-0.5 rounded">Pending</span>
                             @endif
                         </td>
-                        <td class="px-5 py-3.5 text-right space-x-2">
-                            @if(!$grade->grade_verified)
-                                <form action="{{ route('admin.grades.verify', $grade->id) }}" method="POST" class="inline-block">
+                        <td class="px-5 py-3.5 text-right">
+                            <div class="inline-flex items-center gap-2">
+                                @if(!$grade->grade_verified)
+                                <form action="{{ route('admin.grades.verify', $grade->id) }}" method="POST">
                                     @csrf
                                     @method('PATCH')
                                     <button type="submit" class="text-xs font-semibold bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-xl hover:bg-emerald-200 transition">Verify</button>
                                 </form>
-                            @endif
-                            <button type="button" onclick="openEditModal({{ $grade->id }}, {{ $grade->grade_percent }})" class="text-xs font-semibold bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl hover:bg-slate-200 transition">Edit</button>
+                                @endif
+                                <button type="button" onclick="openEditModal({{ $grade->id }}, {{ $grade->grade_percent }})" class="text-xs font-semibold bg-slate-100 text-slate-700 px-3 py-1.5 rounded-xl hover:bg-slate-200 transition">Edit</button>
+                            </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="5" class="px-5 py-6 text-center text-slate-500">No grades found.</td>
+                        <td colspan="7" class="px-5 py-6 text-center text-slate-500">No grades found.</td>
                     </tr>
                     @endforelse
                 </tbody>

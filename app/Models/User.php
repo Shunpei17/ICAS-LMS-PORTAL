@@ -102,4 +102,16 @@ class User extends Authenticatable
     {
         return $this->hasMany(Announcement::class, 'created_by');
     }
+
+    protected static function booted(): void
+    {
+        static::created(function ($model) {
+            event(new \App\Events\AdminModelChanged('user', $model->id, 'created'));
+        });
+
+        // only broadcast on create/delete to reduce update noise (profile edits are frequent)
+        static::deleted(function ($model) {
+            event(new \App\Events\AdminModelChanged('user', $model->id, 'deleted'));
+        });
+    }
 }

@@ -20,6 +20,9 @@ class FacultyAttendanceRecord extends Model
         'student_user_id',
         'student_name',
         'student_class',
+        'subject_code',
+        'student_course',
+        'student_academic_level',
         'attendance_date',
         'status',
     ];
@@ -42,5 +45,17 @@ class FacultyAttendanceRecord extends Model
     public function faculty(): BelongsTo
     {
         return $this->belongsTo(User::class, 'faculty_user_id');
+    }
+
+    protected static function booted(): void
+    {
+        static::created(function ($model) {
+            event(new \App\Events\AdminModelChanged('faculty_attendance_record', $model->id, 'created'));
+        });
+
+        // avoid broadcasting on every update to reduce noise
+        static::deleted(function ($model) {
+            event(new \App\Events\AdminModelChanged('faculty_attendance_record', $model->id, 'deleted'));
+        });
     }
 }

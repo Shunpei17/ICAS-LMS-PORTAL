@@ -46,4 +46,19 @@ class Announcement extends Model
     {
         return $this->belongsTo(User::class, 'created_by');
     }
+
+    protected static function booted(): void
+    {
+        static::created(function ($model) {
+            event(new \App\Events\AdminModelChanged('announcement', $model->id, 'created'));
+        });
+
+        static::updated(function ($model) {
+            event(new \App\Events\AdminModelChanged('announcement', $model->id, 'updated'));
+        });
+
+        static::deleted(function ($model) {
+            event(new \App\Events\AdminModelChanged('announcement', $model->id, 'deleted'));
+        });
+    }
 }

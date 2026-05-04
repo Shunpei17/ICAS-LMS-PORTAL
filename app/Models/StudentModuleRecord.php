@@ -50,6 +50,21 @@ class StudentModuleRecord extends Model
 
     protected static function booted(): void
     {
+        static::created(function ($model) {
+            event(new \App\Events\AdminModelChanged('student_module_record', $model->id, 'created'));
+        });
+
+        // Only broadcast when a grade is verified (important) — avoid noisy updates
+        static::updated(function ($model) {
+            if ($model->isDirty('grade_verified') && $model->grade_verified === true) {
+                event(new \App\Events\AdminModelChanged('student_module_record', $model->id, 'verified'));
+            }
+        });
+
+        static::deleted(function ($model) {
+            event(new \App\Events\AdminModelChanged('student_module_record', $model->id, 'deleted'));
+        });
+
         static::updating(function (StudentModuleRecord $record) {
             if ($record->getOriginal('grade_verified') === true && $record->isDirty('grade_percent')) {
                 throw new \Exception('Cannot modify a verified grade.');
