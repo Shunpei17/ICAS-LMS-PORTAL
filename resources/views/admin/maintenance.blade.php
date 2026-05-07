@@ -75,16 +75,22 @@
                     <p class="text-xs text-slate-500">Blocks all student & faculty access when active.</p>
                 </div>
             </div>
-            <form method="POST" action="{{ route('admin.maintenance.toggle') }}" onsubmit="return confirm('Are you sure you want to {{ $maintenanceMode ? 'disable' : 'enable' }} maintenance mode?')">
+            <form method="POST" action="{{ route('admin.maintenance.toggle') }}">
                 @csrf
-                <input type="hidden" name="maintenance_mode" value="{{ $maintenanceMode ? '0' : '1' }}">
                 <div class="mb-4">
                     <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Reason / Notice Message <span class="text-slate-400 normal-case font-normal">(shown to users)</span></label>
                     <textarea name="maintenance_reason" rows="3" placeholder="e.g. Scheduled database upgrade — back in 30 minutes." class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400">{{ $maintenanceReason }}</textarea>
                 </div>
-                <button type="submit" class="w-full rounded-2xl px-5 py-3 text-sm font-bold shadow-sm transition {{ $maintenanceMode ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 'bg-amber-500 text-white hover:bg-amber-600' }}">
-                    {{ $maintenanceMode ? '✅ Disable Maintenance Mode' : '🔒 Enable Maintenance Mode' }}
-                </button>
+
+                <div class="flex gap-3">
+                    <button type="submit" name="maintenance_mode" value="1" onclick="return confirm('Are you sure you want to enable maintenance mode?')" class="flex-1 rounded-2xl px-5 py-3 text-sm font-bold shadow-sm transition bg-amber-500 text-white hover:bg-amber-600 {{ $maintenanceMode ? 'opacity-50 cursor-not-allowed' : '' }}" @if($maintenanceMode) disabled @endif>
+                        🔒 Enable Maintenance Mode
+                    </button>
+
+                    <button type="submit" name="maintenance_mode" value="0" onclick="return confirm('Are you sure you want to disable maintenance mode?')" class="flex-1 rounded-2xl px-5 py-3 text-sm font-bold shadow-sm transition bg-emerald-600 text-white hover:bg-emerald-700 {{ $maintenanceMode ? '' : 'opacity-50 cursor-not-allowed' }}" @if(! $maintenanceMode) disabled @endif>
+                        ✅ Disable Maintenance Mode
+                    </button>
+                </div>
             </form>
         </section>
 
