@@ -965,8 +965,14 @@ class AdminController extends Controller
 
         $registrationTrend = $months->map(function ($label, $idx) use ($registrations) {
             $monthNum = Carbon::now()->subMonths(5 - $idx)->month;
-            $students = $registrations[$monthNum]['student']->sum('cnt') ?? 0;
-            $faculty = $registrations[$monthNum]['faculty']->sum('cnt') ?? 0;
+
+            // Safely get the grouped results for the month (may be missing)
+            $monthGroup = $registrations->get($monthNum, collect());
+
+            // Each role group may also be missing; default to empty collection
+            $students = $monthGroup->get('student', collect())->sum('cnt');
+            $faculty = $monthGroup->get('faculty', collect())->sum('cnt');
+
             return ['month' => $label, 'students' => $students, 'faculty' => $faculty];
         })->all();
 
