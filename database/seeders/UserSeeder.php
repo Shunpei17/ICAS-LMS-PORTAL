@@ -83,13 +83,15 @@ class UserSeeder extends Seeder
 
         foreach ($students as $student) {
             foreach ($moduleTemplates as $moduleTemplate) {
-                StudentModuleRecord::query()->updateOrCreate(
-                    [
-                        'user_id' => $student->id,
-                        'module_code' => $moduleTemplate['module_code'],
-                    ],
-                    $moduleTemplate,
-                );
+                StudentModuleRecord::withoutEvents(function () use ($student, $moduleTemplate) {
+                    StudentModuleRecord::query()->updateOrCreate(
+                        [
+                            'user_id' => $student->id,
+                            'module_code' => $moduleTemplate['module_code'],
+                        ],
+                        $moduleTemplate,
+                    );
+                });
             }
         }
 
