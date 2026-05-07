@@ -21,127 +21,167 @@
     {{-- New Post Form --}}
     <div x-show="newPost" x-cloak x-transition class="rounded-3xl bg-white border border-slate-200 shadow-sm p-6">
         <h3 class="text-base font-bold text-slate-900 mb-4">Start a New Discussion</h3>
-        <div class="space-y-4">
+        <form action="{{ route('student.forum.store') }}" method="POST" class="space-y-4">
+            @csrf
             <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1.5">Title</label>
-                <input type="text" placeholder="What's your topic?" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                <input type="text" name="title" required placeholder="What's your topic?" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
             </div>
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Course Tag</label>
-                    <select class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
-                        <option>General</option><option>MATH301 — Advanced Mathematics</option><option>PHY201 — Physics I</option><option>HIST201 — World History</option>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Course / Topic</label>
+                    <select name="category" required class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                        <option value="General">General</option>
+                        <option value="Advanced Mathematics">Advanced Mathematics</option>
+                        <option value="Physics I">Physics I</option>
+                        <option value="World History">World History</option>
+                        <option value="Announcements">Announcements</option>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Category</label>
-                    <select class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
-                        <option>Question</option><option>Discussion</option><option>Resource</option><option>Announcement</option>
-                    </select>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Post Type</label>
+                    <div class="flex items-center gap-4 py-3">
+                        <label class="flex items-center gap-2 text-sm text-slate-600">
+                            <input type="radio" name="type" value="discussion" checked class="text-green-600 focus:ring-green-500"> Discussion
+                        </label>
+                        <label class="flex items-center gap-2 text-sm text-slate-600">
+                            <input type="radio" name="type" value="question" class="text-green-600 focus:ring-green-500"> Question
+                        </label>
+                    </div>
                 </div>
             </div>
             <div>
                 <label class="block text-xs font-semibold text-slate-600 mb-1.5">Message</label>
-                <textarea rows="4" placeholder="Write your question or discussion post here..." class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"></textarea>
+                <textarea name="content" required rows="4" placeholder="Write your question or discussion post here..." class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"></textarea>
             </div>
             <div class="flex gap-3">
-                <button class="rounded-2xl bg-green-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-green-700 transition">Post Discussion</button>
-                <button @click="newPost = false" class="rounded-2xl border border-slate-200 px-6 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                <button type="submit" class="rounded-2xl bg-green-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-green-700 transition">Post Discussion</button>
+                <button type="button" @click="newPost = false" class="rounded-2xl border border-slate-200 px-6 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">Cancel</button>
             </div>
-        </div>
+        </form>
     </div>
+
+    @if(session('status'))
+        <div class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800 shadow-sm">
+            {{ session('status') }}
+        </div>
+    @endif
 
     <div class="grid gap-6 xl:grid-cols-[1fr_280px]">
         {{-- Threads --}}
         <div class="space-y-4">
-            @php
-            $threads = [
-                ['id'=>1,'title'=>'Can someone explain integration by parts?','tag'=>'MATH301','category'=>'Question','author'=>'Ana Reyes','role'=>'Student','time'=>'2 hours ago','content'=>'I\'m having trouble understanding when to use integration by parts vs substitution. Can anyone help?','replies'=>[['author'=>'Dr. Maria Fernandez','role'=>'Faculty','time'=>'1 hour ago','content'=>'Great question! Integration by parts is used when the integrand is a product of two functions...'],['author'=>'Miguel Santos','role'=>'Student','time'=>'45 min ago','content'=>'I found this helpful: IBP is basically the reverse of the product rule.']]],
-                ['id'=>2,'title'=>'Physics Lab Report Format','tag'=>'PHY201','category'=>'Resource','author'=>'Mr. Paulo Navarro','role'=>'Faculty','time'=>'Yesterday','content'=>'Please follow the official lab report format attached below. Include: Objectives, Hypothesis, Materials, Procedure, Data, Analysis, Conclusion.','replies'=>[['author'=>'Sofia Cruz','role'=>'Student','time'=>'23 hours ago','content'=>'Thank you! What font size should we use?']]],
-                ['id'=>3,'title'=>'Mid-term date confirmed — April 30','tag'=>'General','category'=>'Announcement','author'=>'Admin User','role'=>'Admin','time'=>'2 days ago','content'=>'The mid-term examinations are scheduled for April 30, 2026. Rooms will be posted by April 25.','replies'=>[]],
-            ];
-            @endphp
-
-            @foreach($threads as $thread)
-            <article class="rounded-3xl bg-white border border-slate-200 shadow-sm" x-data="{ open: false }">
-                <div class="p-5">
-                    <div class="flex flex-wrap items-start justify-between gap-3">
-                        <div class="flex-1 min-w-0">
-                            <div class="flex flex-wrap items-center gap-2 mb-2">
-                                <span class="rounded-full bg-green-100 text-green-700 px-2.5 py-0.5 text-xs font-semibold">{{ $thread['tag'] }}</span>
-                                <span class="rounded-full bg-slate-100 text-slate-600 px-2.5 py-0.5 text-xs font-medium">{{ $thread['category'] }}</span>
-                            </div>
-                            <h4 class="text-base font-bold text-slate-900">{{ $thread['title'] }}</h4>
-                            <div class="flex items-center gap-2 mt-1.5 text-xs text-slate-500">
-                                @php $roleBadge = match($thread['role']) {'Faculty'=>'bg-sky-100 text-sky-700','Admin'=>'bg-violet-100 text-violet-700',default=>'bg-slate-100 text-slate-600'}; @endphp
-                                <span class="h-6 w-6 rounded-full bg-green-600 text-white grid place-items-center font-bold text-xs">{{ strtoupper(substr($thread['author'],0,1)) }}</span>
-                                <span class="font-semibold text-slate-700">{{ $thread['author'] }}</span>
-                                <span class="inline-flex rounded-full {{ $roleBadge }} px-2 py-0.5 text-xs font-semibold">{{ $thread['role'] }}</span>
-                                <span>{{ $thread['time'] }}</span>
-                            </div>
-                            <p class="mt-3 text-sm text-slate-600">{{ $thread['content'] }}</p>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center gap-4 mt-4 pt-3 border-t border-slate-100">
-                        <button @click="open = !open" class="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-green-600 transition">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
-                            {{ count($thread['replies']) }} {{ count($thread['replies']) === 1 ? 'Reply' : 'Replies' }}
-                        </button>
-                        <button @click="open = !open" class="text-xs font-semibold text-green-600 hover:underline">Reply</button>
-                    </div>
-                </div>
-
-                {{-- Replies --}}
-                <div x-show="open" x-cloak x-transition class="border-t border-slate-100 bg-slate-50 rounded-b-3xl px-5 pb-5 pt-4 space-y-3">
-                    @foreach($thread['replies'] as $reply)
-                        @php $rBadge = match($reply['role']) {'Faculty'=>'bg-sky-100 text-sky-700','Admin'=>'bg-violet-100 text-violet-700',default=>'bg-slate-100 text-slate-600'}; @endphp
-                        <div class="flex gap-3">
-                            <div class="h-7 w-7 flex-shrink-0 rounded-full bg-slate-400 text-white grid place-items-center text-xs font-bold">{{ strtoupper(substr($reply['author'],0,1)) }}</div>
-                            <div class="flex-1 rounded-2xl bg-white border border-slate-200 px-4 py-3">
-                                <div class="flex flex-wrap items-center gap-2 text-xs mb-1">
-                                    <span class="font-semibold text-slate-900">{{ $reply['author'] }}</span>
-                                    <span class="rounded-full {{ $rBadge }} px-2 py-0.5 font-semibold">{{ $reply['role'] }}</span>
-                                    <span class="text-slate-400">{{ $reply['time'] }}</span>
+            @forelse($threads as $thread)
+                <article class="rounded-3xl bg-white border border-slate-100 shadow-sm transition-all hover:border-green-200 hover:shadow-md" x-data="{ open: false }">
+                    <div class="p-6">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex flex-wrap items-center gap-2 mb-3">
+                                    <span class="rounded-full bg-slate-100 text-slate-600 px-3 py-1 text-[10px] font-bold uppercase tracking-widest">{{ $thread->category }}</span>
+                                    @if($thread->is_flagged)
+                                        <span class="rounded-full bg-rose-50 text-rose-600 px-3 py-1 text-[10px] font-bold uppercase tracking-widest">🚩 Reported</span>
+                                    @endif
                                 </div>
-                                <p class="text-sm text-slate-600">{{ $reply['content'] }}</p>
+                                <h4 class="text-lg font-bold text-slate-900 mb-2 leading-tight">{{ $thread->title }}</h4>
+                                <p class="text-sm text-slate-600 leading-relaxed">{{ $thread->content }}</p>
+                                
+                                <div class="flex items-center gap-2 mt-4 text-xs text-slate-400">
+                                    <div class="h-6 w-6 rounded-full bg-slate-100 grid place-items-center font-bold text-slate-500 text-[10px]">
+                                        {{ strtoupper(substr($thread->user->name ?? 'U', 0, 1)) }}
+                                    </div>
+                                    <span class="font-bold text-slate-700">{{ $thread->user->name }}</span>
+                                    <span class="text-slate-300">•</span>
+                                    <span>{{ $thread->created_at->diffForHumans() }}</span>
+                                </div>
                             </div>
                         </div>
-                    @endforeach
-                    {{-- Reply compose --}}
-                    <div class="flex gap-3 pt-2">
-                        <div class="h-7 w-7 flex-shrink-0 rounded-full bg-green-600 text-white grid place-items-center text-xs font-bold">{{ strtoupper(substr(auth()->user()->name ?? 'S',0,1)) }}</div>
-                        <div class="flex-1 flex gap-2">
-                            <input type="text" placeholder="Write a reply…" class="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
-                            <button class="rounded-2xl bg-green-600 px-4 py-2 text-xs font-bold text-white hover:bg-green-700 transition">Send</button>
+
+                        <div class="flex items-center gap-6 mt-6 pt-4 border-t border-slate-50">
+                            <button @click="open = !open" class="flex items-center gap-2 text-xs font-bold text-slate-500 hover:text-green-600 transition group">
+                                <div class="p-1.5 rounded-lg bg-slate-50 group-hover:bg-green-50 transition">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
+                                </div>
+                                {{ $thread->replies->count() }} {{ $thread->replies->count() === 1 ? 'Reply' : 'Replies' }}
+                            </button>
+                            <form action="{{ route('student.forum.report', $thread->id) }}" method="POST">
+                                @csrf
+                                <button type="submit" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-rose-600 transition group">
+                                    <div class="p-1.5 rounded-lg group-hover:bg-rose-50 transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 01-2 2zm9-13.5V9"></path></svg>
+                                    </div>
+                                    Report
+                                </button>
+                            </form>
                         </div>
                     </div>
+
+                    {{-- Replies --}}
+                    <div x-show="open" x-cloak x-transition class="border-t border-slate-50 bg-slate-50/50 rounded-b-3xl p-6 space-y-4">
+                        @foreach($thread->replies as $reply)
+                            <div class="flex gap-4">
+                                <div class="h-8 w-8 flex-shrink-0 rounded-full bg-slate-200 text-slate-600 grid place-items-center text-[10px] font-bold">
+                                    {{ strtoupper(substr($reply->user->name ?? 'U', 0, 1)) }}
+                                </div>
+                                <div class="flex-1 rounded-2xl bg-white border border-slate-100 p-4 shadow-sm">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <span class="font-bold text-slate-900 text-xs">{{ $reply->user->name }}</span>
+                                        <span class="text-[10px] text-slate-400 font-semibold">{{ $reply->created_at->diffForHumans() }}</span>
+                                    </div>
+                                    <p class="text-sm text-slate-600">{{ $reply->content }}</p>
+                                </div>
+                            </div>
+                        @endforeach
+
+                        {{-- Reply compose --}}
+                        <div class="flex gap-4 pt-2">
+                            <div class="h-8 w-8 flex-shrink-0 rounded-full bg-green-600 text-white grid place-items-center text-[10px] font-bold">
+                                {{ strtoupper(substr(auth()->user()->name ?? 'S', 0, 1)) }}
+                            </div>
+                            <form action="{{ route('student.forum.reply', $thread->id) }}" method="POST" class="flex-1 flex gap-2">
+                                @csrf
+                                <input type="text" name="content" required placeholder="Write a reply…" class="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 shadow-sm transition-all">
+                                <button type="submit" class="rounded-2xl bg-slate-900 px-6 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition shadow-sm">Send</button>
+                            </form>
+                        </div>
+                    </div>
+                </article>
+            @empty
+                <div class="rounded-3xl border border-dashed border-slate-200 p-12 text-center text-slate-400">
+                    <p class="font-semibold text-slate-500">No discussions yet.</p>
+                    <p class="text-sm mt-1">Be the first to start a conversation!</p>
                 </div>
-            </article>
-            @endforeach
+            @endforelse
+
+            <div class="mt-8">
+                {{ $threads->links() }}
+            </div>
         </div>
 
         {{-- Sidebar --}}
-        <aside class="space-y-4">
-            <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-5">
-                <h3 class="text-sm font-bold text-slate-900 mb-3">Forum Guidelines</h3>
-                <ul class="space-y-2 text-xs text-slate-500">
-                    <li class="flex items-start gap-2"><span class="mt-0.5 text-green-500">✓</span> Be respectful to all members</li>
-                    <li class="flex items-start gap-2"><span class="mt-0.5 text-green-500">✓</span> Stay on topic and course-relevant</li>
-                    <li class="flex items-start gap-2"><span class="mt-0.5 text-green-500">✓</span> No spam or inappropriate content</li>
-                    <li class="flex items-start gap-2"><span class="mt-0.5 text-green-500">✓</span> Help others when you can</li>
-                    <li class="flex items-start gap-2"><span class="mt-0.5 text-amber-500">!</span> Flag violations using the report button</li>
+        <aside class="space-y-6">
+            <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-6">
+                <h3 class="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    Guidelines
+                </h3>
+                <ul class="space-y-3 text-xs text-slate-500">
+                    <li class="flex items-start gap-2 leading-relaxed">Be respectful to all members</li>
+                    <li class="flex items-start gap-2 leading-relaxed">Stay on topic and course-relevant</li>
+                    <li class="flex items-start gap-2 leading-relaxed">No spam or inappropriate content</li>
+                    <li class="flex items-start gap-2 leading-relaxed">Help others when you can</li>
                 </ul>
             </section>
-            <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-5">
-                <h3 class="text-sm font-bold text-slate-900 mb-3">Active Topics</h3>
-                <div class="space-y-2">
-                    @foreach([['MATH301','Advanced Mathematics',3],['PHY201','Physics I',2],['HIST201','World History',1],['General','General',4]] as [$code,$name,$cnt])
-                    <div class="flex items-center justify-between text-xs">
-                        <span class="font-medium text-slate-700">{{ $name }}</span>
-                        <span class="rounded-full bg-green-100 text-green-700 px-2 py-0.5 font-bold">{{ $cnt }}</span>
-                    </div>
-                    @endforeach
+            
+            <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-6">
+                <h3 class="text-sm font-bold text-slate-900 mb-4">Active Topics</h3>
+                <div class="space-y-3">
+                    @forelse($topics as $topic)
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-medium text-slate-700">{{ $topic['title'] }}</span>
+                            <span class="rounded-full bg-slate-100 text-slate-600 px-2.5 py-1 font-bold">{{ $topic['count'] }}</span>
+                        </div>
+                    @empty
+                        <p class="text-xs text-slate-400">No active topics found.</p>
+                    @endforelse
                 </div>
             </section>
         </aside>

@@ -46,18 +46,6 @@
                 </div>
 
                 <div class="w-48">
-                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Department</label>
-                    <select name="department" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-green-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-green-500">
-                        <option value="">All Departments</option>
-                        @foreach($departments as $dept)
-                            @if($dept)
-                                <option value="{{ $dept }}" @selected($departmentFilter === $dept)>{{ $dept }}</option>
-                            @endif
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="w-48">
                     <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Status</label>
                     <select name="status" class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm focus:border-green-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-green-500">
                         <option value="">All Statuses</option>
@@ -70,7 +58,7 @@
                 <button type="submit" class="rounded-xl bg-slate-900 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
                     Filter Results
                 </button>
-                @if($search || $departmentFilter || $statusFilter)
+                @if($search || $statusFilter)
                     <a href="{{ route('admin.faculty') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 hover:text-slate-900">
                         Clear
                     </a>

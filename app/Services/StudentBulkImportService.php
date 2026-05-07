@@ -9,12 +9,13 @@ use Illuminate\Support\Facades\Log;
 
 class StudentBulkImportService
 {
-    const DEFAULT_PASSWORD = '@icas_2026_12345';
+    const STUDENT_DEFAULT_PASSWORD = 'Icas_Students@2026';
+    const ADMIN_DEFAULT_PASSWORD = 'Icas_admin@2026';
 
     const BATCH_SIZE = 100;
 
     /**
-     * Import students from CSV file.
+     * Import users from CSV file.
      *
      * @return array{success: int, failed: int, errors: array, duplicates: int}
      */
@@ -31,15 +32,28 @@ class StudentBulkImportService
         $errors = [];
         $batch = [];
 
-        // Skip header row
+        // Read header row
         $header = fgetcsv($stream);
-        $expectedColumns = ['Student Number', 'Full Name', 'Email', 'Academic Level'];
+        
+        $studentColumns = ['Student Number', 'Full Name', 'Email', 'Academic Level', 'Course', 'Strand'];
+        $adminColumns = ['Admin unique number', 'Full Name', 'Email', 'Department'];
 
-        if ($header !== $expectedColumns) {
+        // Trim headers just in case of BOM or whitespace
+        $header = array_map('trim', $header);
+
+        $type = null;
+        if ($header === $studentColumns) {
+            $type = 'student';
+        } elseif ($header === $adminColumns) {
+            $type = 'admin';
+        }
+
+        if (!$type) {
+            fclose($stream);
             return [
                 'success' => 0,
                 'failed' => 0,
-                'errors' => ['CSV header mismatch. Expected: '.implode(', ', $expectedColumns)],
+                'errors' => ['CSV header mismatch. Please use the provided templates.'],
                 'duplicates' => 0,
             ];
         }
@@ -48,53 +62,63 @@ class StudentBulkImportService
         while (($row = fgetcsv($stream)) !== false) {
             if (empty(array_filter($row))) {
                 $lineNumber++;
-
                 continue;
             }
 
-            [$studentNumber, $fullName, $email, $academicLevel] = array_pad($row, 4, '');
+            if ($type === 'student') {
+                [$number, $name, $email, $level, $course, $strand] = array_pad($row, 6, '');
+                $validation = $this->validateStudent($number, $name, $email, $level, $lineNumber);
+                $role = 'student';
+                $password = self::STUDENT_DEFAULT_PASSWORD;
+                $extra = [
+                    'student_number' => $number,
+                    'academic_level' => trim($level),
+                    'course' => trim($course),
+                    'strand' => trim($strand),
+                ];
+            } else {
+                [$number, $name, $email, $dept] = array_pad($row, 4, '');
+                $validation = $this->validateAdmin($number, $name, $email, $lineNumber);
+                $role = 'admin';
+                $password = self::ADMIN_DEFAULT_PASSWORD;
+                $extra = [
+                    'admin_number' => $number,
+                    'department' => trim($dept),
+                ];
+            }
 
-            // Validate row
-            $validation = $this->validateRow($studentNumber, $fullName, $email, $academicLevel, $lineNumber);
             if (! $validation['valid']) {
                 $failed++;
                 $errors = array_merge($errors, $validation['errors']);
                 $lineNumber++;
-
                 continue;
             }
 
-            // Check for duplicates (email or student_number)
-            $existingUser = User::query()
-                ->where('email', $email)
-                ->orWhere('student_id', $studentNumber)
-                ->first();
+            // Check for duplicates
+            $existing = User::where('email', $email)
+                ->when($type === 'student', fn($q) => $q->orWhere('student_number', $number))
+                ->when($type === 'admin', fn($q) => $q->orWhere('admin_number', $number))
+                ->exists();
 
-            if ($existingUser) {
+            if ($existing) {
                 $duplicates++;
-                $errors[] = "Line $lineNumber: Duplicate student (email: $email or student number: $studentNumber already exists)";
+                $errors[] = "Line $lineNumber: Duplicate account (Email or ID already exists)";
                 $lineNumber++;
-
                 continue;
             }
 
-            // Queue for batch insert
-            $batch[] = [
-                'student_id' => $studentNumber,
-                'name' => trim($fullName),
+            $batch[] = array_merge([
+                'name' => trim($name),
                 'email' => trim($email),
-                'academic_level' => trim($academicLevel),
-                'password' => Hash::make(self::DEFAULT_PASSWORD),
-                'role' => 'student',
+                'password' => Hash::make($password),
+                'role' => $role,
                 'status' => 'active',
-                'account_source' => 'csv_import',
-                'force_password_change' => true,
-                'imported_at' => now(),
+                'is_verified' => true,
+                'needs_password_change' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
-            ];
+            ], $extra);
 
-            // Batch insert every BATCH_SIZE records
             if (count($batch) >= self::BATCH_SIZE) {
                 $success += $this->insertBatch($batch);
                 $batch = [];
@@ -103,20 +127,12 @@ class StudentBulkImportService
             $lineNumber++;
         }
 
-        // Insert remaining batch
         if (! empty($batch)) {
             $success += $this->insertBatch($batch);
         }
 
         fclose($stream);
 
-        Log::info('bulk_import_students', [
-            'success' => $success,
-            'failed' => $failed,
-            'duplicates' => $duplicates,
-            'errors_count' => count($errors),
-        ]);
-
         return [
             'success' => $success,
             'failed' => $failed,
@@ -125,75 +141,38 @@ class StudentBulkImportService
         ];
     }
 
-    /**
-     * Validate a single CSV row.
-     */
-    private function validateRow(string $studentNumber, string $fullName, string $email, string $academicLevel, int $lineNumber): array
+    private function validateStudent($number, $name, $email, $level, $line): array
     {
-        $errors = [];
-
-        if (empty($studentNumber)) {
-            $errors[] = "Line $lineNumber: Student Number is required.";
-        }
-
-        if (empty($fullName)) {
-            $errors[] = "Line $lineNumber: Full Name is required.";
-        }
-
-        if (empty($email)) {
-            $errors[] = "Line $lineNumber: Email is required.";
-        } elseif (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = "Line $lineNumber: Email format is invalid ($email).";
-        }
-
+        $errs = [];
+        if (empty($number)) $errs[] = "Line $line: Student Number is required.";
+        if (empty($name)) $errs[] = "Line $line: Full Name is required.";
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errs[] = "Line $line: Valid Email is required.";
+        
         $validLevels = ['Senior High School', '1st Year College', '2nd Year College', '3rd Year College'];
-        if (empty($academicLevel)) {
-            $errors[] = "Line $lineNumber: Academic Level is required.";
-        } elseif (! in_array($academicLevel, $validLevels)) {
-            $errors[] = "Line $lineNumber: Academic Level must be one of: ".implode(', ', $validLevels);
-        }
+        if (empty($level) || !in_array($level, $validLevels)) $errs[] = "Line $line: Valid Academic Level is required.";
 
-        return [
-            'valid' => empty($errors),
-            'errors' => $errors,
-        ];
+        return ['valid' => empty($errs), 'errors' => $errs];
     }
 
-    /**
-     * Insert a batch of users.
-     */
+    private function validateAdmin($number, $name, $email, $line): array
+    {
+        $errs = [];
+        if (empty($number)) $errs[] = "Line $line: Admin Number is required.";
+        if (empty($name)) $errs[] = "Line $line: Full Name is required.";
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errs[] = "Line $line: Valid Email is required.";
+
+        return ['valid' => empty($errs), 'errors' => $errs];
+    }
+
     private function insertBatch(array $batch): int
     {
         try {
-            User::query()->insert($batch);
-
+            User::insert($batch);
             return count($batch);
         } catch (\Exception $e) {
-            Log::error('bulk_import_batch_error', ['error' => $e->getMessage()]);
-
+            Log::error('Bulk Import Error: ' . $e->getMessage());
             return 0;
         }
     }
-
-    /**
-     * Generate CSV template content.
-     */
-    public static function generateTemplate(): string
-    {
-        $headers = ['Student Number', 'Full Name', 'Email', 'Academic Level'];
-        $example = [
-            ['STU-001', 'Juan Dela Cruz', 'juan.delacruz@school.edu', '1st Year College'],
-            ['STU-002', 'Maria Santos', 'maria.santos@school.edu', '2nd Year College'],
-            ['STU-003', 'Carlos Reyes', 'carlos.reyes@school.edu', 'Senior High School'],
-        ];
-
-        $output = fopen('php://output', 'w');
-        fputcsv($output, $headers);
-        foreach ($example as $row) {
-            fputcsv($output, $row);
-        }
-        fclose($output);
-
-        return '';
-    }
 }
+

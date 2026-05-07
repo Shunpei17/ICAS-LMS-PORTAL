@@ -70,9 +70,9 @@
                         class="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none"
                     />
 
-                    <label class="inline-flex items-center">
-                        <input type="checkbox" name="update_if_exists" value="1" class="mr-2" />
-                        <span class="text-sm text-slate-700">Update existing if found</span>
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="history" value="1" {{ request()->has('history') ? 'checked' : '' }} class="mr-2 rounded border-slate-300 text-slate-900 focus:ring-slate-900" />
+                        <span class="text-sm text-slate-700">View History</span>
                     </label>
 
                     <button type="submit" class="rounded-3xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">Filter</button>

@@ -1,6 +1,6 @@
 @extends('layouts.admin')
-@section('title', 'Maintenance & Backup')
-@section('pageDescription', 'Manage database backups, maintenance mode, and system health.')
+@section('title', 'System Backups')
+@section('pageDescription', 'Manage database backups and system health.')
 
 @section('content')
 <div class="space-y-6" x-data="{ confirmRestore: false }">
@@ -17,7 +17,7 @@
     @endif
 
     {{-- System Health Cards --}}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Database Size</p>
             <p class="text-3xl font-extrabold text-slate-900">{{ $dbSizeMb }} <span class="text-base font-semibold text-slate-400">MB</span></p>
@@ -30,13 +30,6 @@
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Last Backup</p>
             <p class="text-lg font-bold text-slate-900">{{ $lastBackup ? $lastBackup->created_at->format('M j, Y g:i A') : 'Never' }}</p>
             @if($lastBackup)<p class="text-xs text-slate-400 mt-1">by {{ $lastBackup->initiated_by }}</p>@endif
-        </div>
-        <div class="rounded-3xl border {{ $maintenanceMode ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white' }} p-5 shadow-sm">
-            <p class="text-xs font-bold {{ $maintenanceMode ? 'text-amber-600' : 'text-slate-400' }} uppercase tracking-wider mb-1">Maintenance Mode</p>
-            <div class="flex items-center gap-2 mt-1">
-                <span class="h-3 w-3 rounded-full {{ $maintenanceMode ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500' }}"></span>
-                <p class="text-xl font-extrabold {{ $maintenanceMode ? 'text-amber-700' : 'text-emerald-700' }}">{{ $maintenanceMode ? 'ACTIVE' : 'OFF' }}</p>
-            </div>
         </div>
     </div>
 
@@ -62,38 +55,7 @@
         </div>
     </section>
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {{-- Maintenance Mode Toggle --}}
-        <section class="rounded-3xl border {{ $maintenanceMode ? 'border-amber-300 bg-amber-50' : 'border-slate-200 bg-white' }} p-6 shadow-sm">
-            <div class="flex items-center gap-3 mb-5">
-                <div class="h-10 w-10 rounded-2xl {{ $maintenanceMode ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500' }} flex items-center justify-center">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                </div>
-                <div>
-                    <h2 class="text-lg font-bold text-slate-900">Maintenance Mode</h2>
-                    <p class="text-xs text-slate-500">Blocks all student & faculty access when active.</p>
-                </div>
-            </div>
-            <form method="POST" action="{{ route('admin.maintenance.toggle') }}">
-                @csrf
-                <div class="mb-4">
-                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Reason / Notice Message <span class="text-slate-400 normal-case font-normal">(shown to users)</span></label>
-                    <textarea name="maintenance_reason" rows="3" placeholder="e.g. Scheduled database upgrade — back in 30 minutes." class="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400">{{ $maintenanceReason }}</textarea>
-                </div>
-
-                <div class="flex gap-3">
-                    <button type="submit" name="maintenance_mode" value="1" onclick="return confirm('Are you sure you want to enable maintenance mode?')" class="flex-1 rounded-2xl px-5 py-3 text-sm font-bold shadow-sm transition bg-amber-500 text-white hover:bg-amber-600 {{ $maintenanceMode ? 'opacity-50 cursor-not-allowed' : '' }}" @if($maintenanceMode) disabled @endif>
-                        🔒 Enable Maintenance Mode
-                    </button>
-
-                    <button type="submit" name="maintenance_mode" value="0" onclick="return confirm('Are you sure you want to disable maintenance mode?')" class="flex-1 rounded-2xl px-5 py-3 text-sm font-bold shadow-sm transition bg-emerald-600 text-white hover:bg-emerald-700 {{ $maintenanceMode ? '' : 'opacity-50 cursor-not-allowed' }}" @if(! $maintenanceMode) disabled @endif>
-                        ✅ Disable Maintenance Mode
-                    </button>
-                </div>
-            </form>
-        </section>
-
+    <div class="grid grid-cols-1 gap-6">
         {{-- Backup Now + Schedule --}}
         <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm space-y-5">
             <div class="flex items-center gap-3 mb-1">

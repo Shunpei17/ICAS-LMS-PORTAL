@@ -28,7 +28,10 @@ class ClassroomController extends Controller
         /** @var User $faculty */
         $faculty = Auth::user();
 
+        $settings = new \App\Services\SystemSettingsService();
         $classrooms = $faculty->classroomsAsFaculty()
+            ->where('academic_year', $settings->get('academic_year'))
+            ->where('semester', $settings->get('current_semester'))
             ->withCount('students')
             ->orderByDesc('created_at')
             ->get()
@@ -98,6 +101,10 @@ class ClassroomController extends Controller
 
         /** @var User $faculty */
         $faculty = Auth::user();
+
+        $settings = new \App\Services\SystemSettingsService();
+        $validated['academic_year'] = $settings->get('academic_year');
+        $validated['semester'] = $settings->get('current_semester');
 
         $faculty->classroomsAsFaculty()->create($validated);
 
@@ -235,7 +242,10 @@ class ClassroomController extends Controller
 
         $enrolledIds = $student->classroomsAsStudent()->pluck('classrooms.id')->all();
 
+        $settings = new \App\Services\SystemSettingsService();
         $classrooms = Classroom::where('status', 'active')
+            ->where('academic_year', $settings->get('academic_year'))
+            ->where('semester', $settings->get('current_semester'))
             ->with('faculty:id,name')
             ->withCount('students')
             ->orderBy('name')
@@ -312,9 +322,14 @@ class ClassroomController extends Controller
 
         $search = trim((string) $request->query('search', ''));
 
+        $settings = new \App\Services\SystemSettingsService();
         $classrooms = Classroom::query()
             ->with('faculty:id,name')
             ->withCount('students')
+            ->when(! $request->has('history'), function ($q) use ($settings) {
+                $q->where('academic_year', $settings->get('academic_year'))
+                  ->where('semester', $settings->get('current_semester'));
+            })
             ->when($statusFilter !== '', fn ($q) => $q->where('status', $statusFilter))
             ->when($search !== '', fn ($q) => $q->where(function ($q) use ($search): void {
                 $q->where('name', 'like', '%'.$search.'%')
@@ -366,6 +381,35 @@ class ClassroomController extends Controller
         ];
 
         return view('admin.classrooms', compact('classrooms', 'summary', 'statusFilter', 'search'));
+    }
+
+    public function adminCreate(): View
+    {
+        $classroom = null;
+        $faculties = User::where('role', 'faculty')->orderBy('name')->get();
+        return view('admin.classroom-form', compact('classroom', 'faculties'));
+    }
+
+    public function adminStore(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'code' => ['required', 'string', 'max:20', 'unique:classrooms,code'],
+            'schedule' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'status' => ['required', 'in:active,inactive'],
+            'faculty_user_id' => ['nullable', 'exists:users,id'],
+        ]);
+
+        $settings = new \App\Services\SystemSettingsService();
+        $validated['academic_year'] = $settings->get('academic_year');
+        $validated['semester'] = $settings->get('current_semester');
+
+        $classroom = Classroom::create($validated);
+
+        return redirect()
+            ->route('admin.classrooms')
+            ->with('status', 'Classroom "'.$validated['name'].'" created successfully.');
     }
 
     /**

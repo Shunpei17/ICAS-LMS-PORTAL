@@ -27,7 +27,6 @@
             <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
                 <div>
                     <h2 class="text-xl font-bold text-slate-900">All Classrooms</h2>
-                    <p class="text-sm text-slate-500 mt-1">Read-only view. Classrooms are created and managed by faculty.</p>
                 </div>
 
                 <form method="GET" action="{{ route('admin.classrooms') }}" class="flex flex-wrap gap-3 items-center">
@@ -38,10 +37,18 @@
                         <option value="active"   {{ $statusFilter === 'active'   ? 'selected' : '' }}>Active</option>
                         <option value="inactive" {{ $statusFilter === 'inactive' ? 'selected' : '' }}>Inactive</option>
                     </select>
+                    <label class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer mr-2">
+                        <input type="checkbox" name="history" value="1" {{ request()->has('history') ? 'checked' : '' }} class="rounded border-slate-300 text-green-600 focus:ring-green-500">
+                        View History
+                    </label>
                     <button type="submit" class="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 transition">Filter</button>
-                    @if($search || $statusFilter)
+                    @if($search || $statusFilter || request()->has('history'))
                         <a href="{{ route('admin.classrooms') }}" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">Clear</a>
                     @endif
+                    <a href="{{ route('admin.classrooms.create') }}" class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        Add a Classroom
+                    </a>
                 </form>
             </div>
 
@@ -124,7 +131,6 @@
                     <p class="text-sm font-medium text-slate-700">
                         @if($search || $statusFilter) No classrooms match your filters. @else No classrooms created yet. @endif
                     </p>
-                    <p class="mt-1 text-xs text-slate-400">Faculty members create classrooms from their portal.</p>
                 </div>
             @endif
         </section>

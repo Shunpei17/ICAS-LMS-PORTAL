@@ -373,7 +373,15 @@ class FacultyController extends Controller
 
         $gradeSubjects = ['MATH301', 'PHY201', 'HIST201', 'ENG101'];
 
-        return view('faculty.grades', compact('summary', 'records', 'filters', 'activeFilters', 'classOptions', 'tab', 'studentsWithGrades', 'gradeSubjects', 'gradeSubjectFilter', 'gradeSearch'));
+        // Load classrooms with their grading criteria for the criteria config section
+        /** @var User $faculty */
+        $faculty = Auth::user();
+        $facultyClassrooms = $faculty->classroomsAsFaculty()
+            ->with('gradingCriteria')
+            ->orderBy('name')
+            ->get();
+
+        return view('faculty.grades', compact('summary', 'records', 'filters', 'activeFilters', 'classOptions', 'tab', 'studentsWithGrades', 'gradeSubjects', 'gradeSubjectFilter', 'gradeSearch', 'facultyClassrooms'));
     }
 
     public function storeAttendanceRecord(StoreFacultyAttendanceRecordRequest $request): RedirectResponse
@@ -435,10 +443,13 @@ class FacultyController extends Controller
                 }
             }
 
+            $settings = new \App\Services\SystemSettingsService();
             FacultyAttendanceRecord::query()->create(array_merge([
                 'faculty_user_id' => Auth::id(),
                 'student_course' => $studentCourse,
                 'student_academic_level' => $studentLevel,
+                'academic_year' => $settings->get('academic_year'),
+                'semester' => $settings->get('current_semester'),
             ], $data));
 
             return redirect()
@@ -575,8 +586,11 @@ class FacultyController extends Controller
      */
     private function queryAttendanceRecords(array $filters): Builder
     {
+        $settings = new \App\Services\SystemSettingsService();
         return FacultyAttendanceRecord::query()
             ->where('faculty_user_id', Auth::id())
+            ->where('academic_year', $settings->get('academic_year'))
+            ->where('semester', $settings->get('current_semester'))
             ->when($filters['search'] !== '', function (Builder $query) use ($filters): void {
                 $query->where('student_name', 'like', '%'.$filters['search'].'%');
             })
@@ -599,7 +613,10 @@ class FacultyController extends Controller
 
         $courseFilter = trim((string) $request->query('course', ''));
 
+        $settings = new \App\Services\SystemSettingsService();
         $enrollments = StudentModuleRecord::query()
+            ->where('academic_year', $settings->get('academic_year'))
+            ->where('semester', $settings->get('current_semester'))
             ->when($tab === 'enrolled', fn ($q) => $q->whereIn('enrollment_status', ['faculty_approved', 'enrolled']))
             ->when($tab !== 'enrolled', fn ($q) => $q->where('enrollment_status', $tab))
             ->with(['user:id,name,email'])
@@ -610,9 +627,15 @@ class FacultyController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $enrolledCount = StudentModuleRecord::whereIn('enrollment_status', ['faculty_approved', 'enrolled'])->count();
-        $pendingCount = StudentModuleRecord::where('enrollment_status', 'pending')->count();
-        $droppedCount = StudentModuleRecord::where('enrollment_status', 'dropped')->count();
+        $enrolledCount = StudentModuleRecord::where('academic_year', $settings->get('academic_year'))
+            ->where('semester', $settings->get('current_semester'))
+            ->whereIn('enrollment_status', ['faculty_approved', 'enrolled'])->count();
+        $pendingCount = StudentModuleRecord::where('academic_year', $settings->get('academic_year'))
+            ->where('semester', $settings->get('current_semester'))
+            ->where('enrollment_status', 'pending')->count();
+        $droppedCount = StudentModuleRecord::where('academic_year', $settings->get('academic_year'))
+            ->where('semester', $settings->get('current_semester'))
+            ->where('enrollment_status', 'dropped')->count();
 
         $summary = [
             ['label' => 'Pending',  'value' => (string) $pendingCount,  'color' => 'amber',   'tab' => 'pending'],
@@ -699,5 +722,62 @@ class FacultyController extends Controller
         $tags = ['General', 'Math', 'Physics', 'History', 'Announcement'];
 
         return view('faculty.forum', compact('threads', 'stats', 'tags'));
+    }
+
+    /**
+     * Store or update grading criteria for a classroom.
+     */
+    public function storeGradingCriteria(Request $request, Classroom $classroom): RedirectResponse
+    {
+        $this->authorizeClassroom($classroom);
+
+        $validated = $request->validate([
+            'criteria' => ['required', 'array', 'min:1'],
+            'criteria.*.component_name' => ['required', 'string', 'max:100'],
+            'criteria.*.weight' => ['required', 'numeric', 'min:0', 'max:100'],
+            'criteria.*.term' => ['required', 'string', 'in:Prelim,Midterm,Final'],
+        ]);
+
+        // Validate total weight = 100%
+        $totalWeight = collect($validated['criteria'])->sum('weight');
+        if (abs($totalWeight - 100) > 0.01) {
+            return redirect()->back()->withErrors(['criteria' => 'Total weight must equal exactly 100%. Current total: '.$totalWeight.'%']);
+        }
+
+        // Clear existing criteria and replace
+        $classroom->gradingCriteria()->delete();
+
+        foreach ($validated['criteria'] as $criterion) {
+            $classroom->gradingCriteria()->create([
+                'component_name' => $criterion['component_name'],
+                'weight' => $criterion['weight'],
+                'term' => $criterion['term'],
+            ]);
+        }
+
+        return redirect()->back()->with('status', 'Grading criteria saved for "'.$classroom->name.'".');
+    }
+
+    /**
+     * Delete a single grading criterion.
+     */
+    public function deleteGradingCriteria(Classroom $classroom, \App\Models\ClassroomGradingCriteria $criteria): RedirectResponse
+    {
+        $this->authorizeClassroom($classroom);
+
+        if ((int) $criteria->classroom_id !== (int) $classroom->id) {
+            abort(403);
+        }
+
+        $criteria->delete();
+
+        return redirect()->back()->with('status', 'Criterion removed.');
+    }
+
+    private function authorizeClassroom(Classroom $classroom): void
+    {
+        if ((int) $classroom->faculty_user_id !== (int) Auth::id()) {
+            abort(403);
+        }
     }
 }

@@ -70,10 +70,17 @@
                             <form method="POST" action="{{ route('student.enrollment.store') }}" class="mt-5">
                                 @csrf
                                 <input type="hidden" name="module_code" value="{{ $module['code'] }}">
-                                <button type="submit" class="inline-flex items-center gap-2 rounded-2xl bg-green-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-green-700 shadow-sm">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                    Enroll Now
-                                </button>
+                                @if($isEnrollmentPeriod)
+                                    <button type="submit" class="inline-flex items-center gap-2 rounded-2xl bg-green-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-green-700 shadow-sm">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                        Enroll Now
+                                    </button>
+                                @else
+                                    <button type="button" disabled class="inline-flex items-center gap-2 rounded-2xl bg-slate-200 px-5 py-2 text-sm font-semibold text-slate-400 cursor-not-allowed shadow-sm">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                        Enrollment Closed
+                                    </button>
+                                @endif
                             </form>
                         </article>
                     @empty

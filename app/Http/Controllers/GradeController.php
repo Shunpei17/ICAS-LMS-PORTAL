@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Classroom;
 use App\Models\Grade;
+use App\Services\GradingService;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -34,10 +35,25 @@ class GradeController extends Controller
                 }
             }
 
-            // Compute
-            // Quiz (30%), Assignment (30%), Exam (40%)
-            $average = ($quiz * 0.30) + ($assignment * 0.30) + ($exam * 0.40);
-            $remarks = $average >= 75 ? 'Pass' : 'Fail';
+            // Look up classroom-specific grading criteria weights
+            $quizWeight = 0.30;
+            $assignmentWeight = 0.30;
+            $examWeight = 0.40;
+
+            if ($classroom !== null) {
+                $criteria = \App\Models\ClassroomGradingCriteria::where('classroom_id', $classroom->id)->get();
+                if ($criteria->isNotEmpty()) {
+                    $quizWeight = $criteria->where('component_name', 'Quiz')->first()?->weight / 100 ?? 0.30;
+                    $assignmentWeight = $criteria->where('component_name', 'Assignment')->first()?->weight / 100 ?? 0.30;
+                    $examWeight = $criteria->where('component_name', 'Exam')->first()?->weight / 100 ?? 0.40;
+                }
+            }
+
+            // Compute weighted average
+            $average = ($quiz * $quizWeight) + ($assignment * $assignmentWeight) + ($exam * $examWeight);
+
+            // Use GradingService constant for pass/fail determination
+            $remarks = $average >= GradingService::PASSING_GRADE ? 'Pass' : 'Fail';
 
             Grade::updateOrCreate(
                 [
@@ -76,7 +92,7 @@ class GradeController extends Controller
 
         return response()->streamDownload(function () use ($grades) {
             $output = fopen('php://output', 'w');
-            fputcsv($output, ['Student Name', 'Subject', 'Quiz (30%)', 'Assignment (30%)', 'Exam (40%)', 'Average', 'Remarks']);
+            fputcsv($output, ['Student Name', 'Subject', 'Quiz', 'Assignment', 'Exam', 'Average', 'Remarks']);
 
             foreach ($grades as $grade) {
                 fputcsv($output, [

@@ -89,9 +89,12 @@ class StudentController extends Controller
     {
         $catalogByCode = collect($this->enrollmentCatalog())->keyBy('code');
 
-        // All records for this user (including dropped ones)
+        $settings = new \App\Services\SystemSettingsService();
+        // All records for this user in the CURRENT term
         $allRecords = StudentModuleRecord::query()
             ->where('user_id', Auth::id())
+            ->where('academic_year', $settings->get('academic_year'))
+            ->where('semester', $settings->get('current_semester'))
             ->orderBy('module_name')
             ->get();
 
@@ -153,20 +156,16 @@ class StudentController extends Controller
                 ->withInput();
         }
 
+        $settings = new \App\Services\SystemSettingsService();
         StudentModuleRecord::query()->create([
             'user_id' => Auth::id(),
             'module_name' => (string) $module['name'],
             'module_code' => (string) $module['code'],
             'instructor' => (string) $module['instructor'],
             'schedule' => (string) $module['schedule'],
-            'section' => null,
+            'academic_year' => $settings->get('academic_year'),
+            'semester' => $settings->get('current_semester'),
             'enrollment_status' => 'pending',
-            'grade_percent' => null,
-            'documents_count' => 0,
-            'upcoming_assessment_title' => null,
-            'upcoming_assessment_points' => null,
-            'upcoming_assessment_due_date' => null,
-            'upcoming_assessment_duration_minutes' => null,
         ]);
 
         return redirect()
@@ -188,13 +187,18 @@ class StudentController extends Controller
             })
             ->all();
 
+        $settings = new \App\Services\SystemSettingsService();
         $allRecords = StudentModuleRecord::query()
             ->where('user_id', Auth::id())
+            ->where('academic_year', $settings->get('academic_year'))
+            ->where('semester', $settings->get('current_semester'))
             ->orderBy('module_name')
             ->get();
 
         $records = StudentModuleRecord::query()
             ->where('user_id', Auth::id())
+            ->where('academic_year', $settings->get('academic_year'))
+            ->where('semester', $settings->get('current_semester'))
             ->when($filters['filter_code'] !== '', function ($query) use ($filters) {
                 $query->where('module_code', 'like', '%'.$filters['filter_code'].'%');
             })
@@ -288,8 +292,11 @@ class StudentController extends Controller
             $isExistingRecord = false;
         }
 
+        $settings = new \App\Services\SystemSettingsService();
         $record->module_name = (string) $validated['module_name'];
         $record->module_code = $moduleCode;
+        $record->academic_year = $settings->get('academic_year');
+        $record->semester = $settings->get('current_semester');
         $record->instructor = $validated['instructor'] ?? null;
         $record->schedule = $validated['schedule'] ?? null;
         $record->grade_percent = $validated['grade_percent'] ?? null;
@@ -404,102 +411,197 @@ class StudentController extends Controller
 
     public function grades(): View
     {
+        $settings = new \App\Services\SystemSettingsService();
+        $allRecords = StudentModuleRecord::query()
+            ->where('user_id', Auth::id())
+            ->where('academic_year', $settings->get('academic_year'))
+            ->where('semester', $settings->get('current_semester'))
+            ->whereNotNull('grade_percent')
+            ->get();
+
+        $grading = new GradingService;
+        $gpas = $allRecords->map(fn($r) => $grading->toGpa((float)$r->grade_percent))
+            ->filter(fn($g) => is_string($g) && $g !== 'Dropped')
+            ->map(fn($g) => (float)$g);
+
+        $avgGrade = $gpas->count() ? number_format($gpas->avg(), 2) : '0';
+        $totalCourses = $allRecords->count();
+
         $summary = [
-            ['label' => 'Overall Average', 'value' => '87%'],
-            ['label' => 'Average ICAS', 'value' => '35%'],
-            ['label' => 'Courses', 'value' => '3'],
+            ['label' => 'Overall Average (GPA)', 'value' => $avgGrade],
+            ['label' => 'Academic Term', 'value' => $settings->get('academic_year') . ' | ' . $settings->get('current_semester')],
+            ['label' => 'Courses', 'value' => (string) $totalCourses],
         ];
 
-        $courses = [
-            ['name' => 'Advanced Mathematics', 'description' => 'ICAS (Internal Continuous Assessment) - 40%', 'grade' => 'A - 90%', 'progress' => 36, 'quizzes' => [
-                ['label' => 'Quiz 1', 'score' => '85%'],
-                ['label' => 'Quiz 2', 'score' => '90%'],
-                ['label' => 'Quiz 3', 'score' => '88%'],
-                ['label' => 'Participation', 'score' => '95%'],
-            ]],
-            ['name' => 'Physics I', 'description' => 'ICAS (Internal Continuous Assessment) - 40%', 'grade' => 'B+ - 83%', 'progress' => 72, 'quizzes' => [
-                ['label' => 'Quiz 1', 'score' => '78%'],
-                ['label' => 'Quiz 2', 'score' => '82%'],
-                ['label' => 'Quiz 3', 'score' => '85%'],
-                ['label' => 'Participation', 'score' => '90%'],
-            ]],
-        ];
+        $courses = $allRecords->map(function ($r) {
+            return [
+                'name' => $r->module_name,
+                'description' => 'Academic Code: ' . $r->module_code,
+                'grade' => number_format((float)$r->grade_percent, 0) . '%',
+                'progress' => (float)$r->grade_percent,
+                'quizzes' => [],
+            ];
+        })->all();
 
-        $majorExams = [
-            ['label' => 'Midterm', 'value' => '92%'],
-            ['label' => 'Final', 'value' => '87%'],
-            ['label' => 'Assignment Average', 'value' => '89%'],
-        ];
+        $majorExams = [];
 
         return view('student.grades', compact('summary', 'courses', 'majorExams'));
     }
 
     public function documents(): View
     {
+        $userId = Auth::id();
+        $allRequests = DocumentRequest::where('user_id', $userId)->latest()->get();
+
         $summary = [
-            ['label' => 'Pending', 'value' => '1'],
-            ['label' => 'Approved', 'value' => '1'],
-            ['label' => 'Ready', 'value' => '0'],
-            ['label' => 'Total', 'value' => '2'],
+            ['label' => 'Pending',   'value' => (string) $allRequests->where('status', 'Pending')->count()],
+            ['label' => 'Processing', 'value' => (string) $allRequests->where('status', 'Processing')->count()],
+            ['label' => 'Completed',  'value' => (string) $allRequests->where('status', 'Completed')->count()],
+            ['label' => 'Total',      'value' => (string) $allRequests->count()],
         ];
 
-        $requests = [
-            ['title' => 'Transcript', 'purpose' => 'College Application', 'requested' => '3/25/2026', 'status' => 'Approved', 'note' => 'Will be ready in 3-5 business days.'],
-            ['title' => 'Certificate of Enrollment', 'purpose' => 'Scholarship Application', 'requested' => '3/28/2026', 'status' => 'Pending', 'note' => null],
-        ];
+        $requests = $allRequests->map(function($r) {
+            $note = null;
+            if ($r->status === 'Completed') {
+                $note = 'Ready for pick-up at the Registrar\'s Office.';
+            } elseif ($r->status === 'Processing') {
+                $note = 'Your request is currently being processed by the registrar.';
+            } elseif ($r->status === 'Rejected') {
+                $note = 'This request was rejected. Please contact the office for details.';
+            }
+
+            return [
+                'id' => $r->id,
+                'title' => $r->document_type,
+                'purpose' => $r->purpose,
+                'requested' => $r->created_at->format('M j, Y'),
+                'urgency' => $r->urgency,
+                'status' => $r->status,
+                'note' => $note
+            ];
+        });
 
         return view('student.documents', compact('summary', 'requests'));
     }
 
+    public function storeDocument(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'document_type' => 'required|string',
+            'purpose' => 'required|string|max:255',
+            'urgency' => 'required|in:Standard,Rush',
+        ]);
+
+        DocumentRequest::create([
+            'user_id' => Auth::id(),
+            'document_type' => $validated['document_type'],
+            'purpose' => $validated['purpose'],
+            'urgency' => $validated['urgency'],
+            'status' => 'Pending',
+        ]);
+
+        return back()->with('status', 'Document request submitted successfully.');
+    }
+
     public function forum(): View
     {
-        $posts = [
-            ['author' => 'Miguel Santos', 'role' => 'Student', 'time' => '3 days ago', 'course' => 'Physics I', 'content' => 'Can someone explain the difference between velocity and acceleration?'],
-            ['author' => 'Mr. Paulo Navarro', 'role' => 'Faculty', 'time' => '3 days ago', 'course' => 'Physics I', 'content' => 'Great question! Velocity is the rate of change of position, while acceleration is the rate of change of velocity.'],
-        ];
+        $threads = ForumThread::with(['user', 'replies.user'])
+            ->where('is_visible', true)
+            ->latest()
+            ->paginate(10);
 
-        $topics = [
-            ['title' => 'Advanced Mathematics', 'count' => 1],
-            ['title' => 'Physics I', 'count' => 2],
-        ];
+        $topics = ForumThread::select('category', DB::raw('count(*) as count'))
+            ->where('is_visible', true)
+            ->groupBy('category')
+            ->get()
+            ->map(fn($t) => ['title' => $t->category, 'count' => $t->count]);
 
-        $courses = [
-            ['name' => 'Advanced Mathematics', 'code' => 'MATH301'],
-            ['name' => 'Physics I', 'code' => 'PHY201'],
-            ['name' => 'World History', 'code' => 'HIST201'],
-        ];
+        return view('student.forum', compact('threads', 'topics'));
+    }
 
-        return view('student.forum', compact('posts', 'topics', 'courses'));
+    public function storeForumThread(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'content' => 'required|string',
+            'category' => 'required|string',
+        ]);
+
+        ForumThread::create([
+            'user_id' => Auth::id(),
+            'title' => $validated['title'],
+            'content' => $validated['content'],
+            'category' => $validated['category'],
+        ]);
+
+        return back()->with('status', 'Discussion posted successfully.');
+    }
+
+    public function storeForumReply(Request $request, ForumThread $forumThread): RedirectResponse
+    {
+        $validated = $request->validate([
+            'content' => 'required|string',
+        ]);
+
+        ForumReply::create([
+            'user_id' => Auth::id(),
+            'forum_thread_id' => $forumThread->id,
+            'content' => $validated['content'],
+        ]);
+
+        return back()->with('status', 'Reply posted successfully.');
+    }
+
+    public function reportForumThread(ForumThread $forumThread): RedirectResponse
+    {
+        $forumThread->update(['is_flagged' => true]);
+        return back()->with('status', 'This discussion has been reported and will be reviewed by administrators.');
     }
 
     public function attendance(): View
     {
+        $settings = new \App\Services\SystemSettingsService();
+        $recordsRaw = \App\Models\FacultyAttendanceRecord::query()
+            ->where('academic_year', $settings->get('academic_year'))
+            ->where('semester', $settings->get('current_semester'))
+            ->where('student_name', 'like', '%' . Auth::user()->name . '%')
+            ->orderByDesc('attendance_date')
+            ->get();
+
+        $total = $recordsRaw->count();
+        $present = $recordsRaw->where('status', 'Present')->count();
+        $absent = $recordsRaw->where('status', 'Absent')->count();
+        $late = $recordsRaw->where('status', 'Late')->count();
+        $rate = $total > 0 ? round(($present / $total) * 100) : 0;
+
         $summary = [
-            ['label' => 'Total Days',  'value' => '45', 'color' => 'slate'],
-            ['label' => 'Present',     'value' => '38', 'color' => 'emerald'],
-            ['label' => 'Absent',      'value' => '4',  'color' => 'rose'],
-            ['label' => 'Late',        'value' => '3',  'color' => 'amber'],
-            ['label' => 'Attendance Rate', 'value' => '84%', 'color' => 'sky'],
+            ['label' => 'Total Records', 'value' => (string) $total, 'color' => 'slate'],
+            ['label' => 'Present',      'value' => (string) $present, 'color' => 'emerald'],
+            ['label' => 'Absent',       'value' => (string) $absent,  'color' => 'rose'],
+            ['label' => 'Late',         'value' => (string) $late,    'color' => 'amber'],
+            ['label' => 'Attendance Rate', 'value' => $rate . '%', 'color' => 'sky'],
         ];
 
-        $records = [
-            ['date' => 'Apr 21, 2026', 'class' => 'MATH301', 'course' => 'Advanced Mathematics',    'faculty' => 'Dr. Maria Fernandez', 'status' => 'Present'],
-            ['date' => 'Apr 21, 2026', 'class' => 'PHY201',  'course' => 'Physics I',               'faculty' => 'Mr. Paulo Navarro',   'status' => 'Present'],
-            ['date' => 'Apr 20, 2026', 'class' => 'HIST201', 'course' => 'World History',           'faculty' => 'Mrs. Grace Bautista', 'status' => 'Late'],
-            ['date' => 'Apr 20, 2026', 'class' => 'MATH301', 'course' => 'Advanced Mathematics',    'faculty' => 'Dr. Maria Fernandez', 'status' => 'Present'],
-            ['date' => 'Apr 18, 2026', 'class' => 'PHY201',  'course' => 'Physics I',               'faculty' => 'Mr. Paulo Navarro',   'status' => 'Absent'],
-            ['date' => 'Apr 18, 2026', 'class' => 'HIST201', 'course' => 'World History',           'faculty' => 'Mrs. Grace Bautista', 'status' => 'Present'],
-            ['date' => 'Apr 17, 2026', 'class' => 'MATH301', 'course' => 'Advanced Mathematics',    'faculty' => 'Dr. Maria Fernandez', 'status' => 'Present'],
-            ['date' => 'Apr 16, 2026', 'class' => 'PHY201',  'course' => 'Physics I',               'faculty' => 'Mr. Paulo Navarro',   'status' => 'Present'],
-            ['date' => 'Apr 15, 2026', 'class' => 'HIST201', 'course' => 'World History',           'faculty' => 'Mrs. Grace Bautista', 'status' => 'Absent'],
-            ['date' => 'Apr 14, 2026', 'class' => 'MATH301', 'course' => 'Advanced Mathematics',    'faculty' => 'Dr. Maria Fernandez', 'status' => 'Late'],
-        ];
+        $records = $recordsRaw->map(function ($r) {
+            return [
+                'date' => $r->attendance_date->format('M j, Y'),
+                'class' => $r->student_class,
+                'course' => $r->student_class, // Subject code
+                'faculty' => $r->faculty?->name ?? 'Faculty',
+                'status' => $r->status,
+            ];
+        })->all();
 
-        $courseBreakdown = [
-            ['code' => 'MATH301', 'name' => 'Advanced Mathematics', 'present' => 14, 'absent' => 1, 'late' => 1, 'total' => 16],
-            ['code' => 'PHY201',  'name' => 'Physics I',            'present' => 13, 'absent' => 2, 'late' => 1, 'total' => 16],
-            ['code' => 'HIST201', 'name' => 'World History',        'present' => 11, 'absent' => 1, 'late' => 1, 'total' => 13],
-        ];
+        $courseBreakdown = $recordsRaw->groupBy('student_class')->map(function ($group, $code) {
+            return [
+                'code' => $code,
+                'name' => $code,
+                'present' => $group->where('status', 'Present')->count(),
+                'absent' => $group->where('status', 'Absent')->count(),
+                'late' => $group->where('status', 'Late')->count(),
+                'total' => $group->count(),
+            ];
+        })->values()->all();
 
         return view('student.attendance', compact('summary', 'records', 'courseBreakdown'));
     }

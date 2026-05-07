@@ -80,6 +80,10 @@
                         <p class="text-sm font-bold text-slate-900">{{ $admin->email }}</p>
                     </div>
                     <div class="rounded-2xl bg-slate-50 border border-slate-100 p-4">
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Admin Unique Number</p>
+                        <p class="text-sm font-bold text-slate-900">{{ $admin->admin_number ?: 'N/A' }}</p>
+                    </div>
+                    <div class="rounded-2xl bg-slate-50 border border-slate-100 p-4">
                         <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Role</p>
                         <p class="text-sm font-bold text-slate-900 capitalize">{{ $admin->role }}</p>
                     </div>

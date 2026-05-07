@@ -18,6 +18,10 @@
                         <option value="Pending" @selected(($statusFilter ?? '') === 'Pending')>Pending</option>
                         <option value="Verified" @selected(($statusFilter ?? '') === 'Verified')>Verified</option>
                     </select>
+                    <label class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer px-2">
+                        <input type="checkbox" name="history" value="1" @checked(request()->has('history')) onchange="this.form.submit()" class="rounded border-slate-300 text-slate-900 focus:ring-slate-900">
+                        View History
+                    </label>
                     <select name="academic_level" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white" onchange="this.form.submit()">
                         <option value="">All Levels</option>
                         <option value="Senior High School" @selected($academicLevelFilter === 'Senior High School')>Senior High</option>

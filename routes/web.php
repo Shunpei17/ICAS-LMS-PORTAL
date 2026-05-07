@@ -82,7 +82,11 @@ Route::middleware('auth', 'force.password.change')->group(function () {
         Route::post('/classrooms/{classroom}/enroll', [ClassroomController::class, 'studentEnroll'])->middleware('classroom.active')->name('classrooms.enroll');
         Route::get('/attendance', [StudentController::class, 'attendance'])->name('attendance');
         Route::get('/documents', [StudentController::class, 'documents'])->name('documents');
+        Route::post('/documents', [StudentController::class, 'storeDocument'])->name('documents.store');
         Route::get('/forum', [StudentController::class, 'forum'])->name('forum');
+        Route::post('/forum', [StudentController::class, 'storeForumThread'])->name('forum.store');
+        Route::post('/forum/{forumThread}/reply', [StudentController::class, 'storeForumReply'])->name('forum.reply');
+        Route::post('/forum/{forumThread}/report', [StudentController::class, 'reportForumThread'])->name('forum.report');
         Route::get('/schedule', [StudentController::class, 'schedule'])->name('schedule');
         Route::get('/notifications', [StudentController::class, 'notifications'])->name('notifications');
         Route::get('/settings', [StudentController::class, 'settings'])->name('settings');
@@ -117,6 +121,10 @@ Route::middleware('auth', 'force.password.change')->group(function () {
         // Export classroom students (faculty)
         Route::get('/classrooms/{classroom}/export', [ClassroomController::class, 'adminExport'])->name('faculty.classrooms.export');
         Route::get('/schedule', [FacultyController::class, 'schedule'])->name('schedule');
+
+        // Classroom grading criteria management
+        Route::post('/classrooms/{classroom}/grading-criteria', [FacultyController::class, 'storeGradingCriteria'])->name('classrooms.grading-criteria.store');
+        Route::delete('/classrooms/{classroom}/grading-criteria/{criteria}', [FacultyController::class, 'deleteGradingCriteria'])->name('classrooms.grading-criteria.destroy');
     });
 
     // NOTE: Removed duplicate global route `grades.export.csv` to prefer
@@ -136,26 +144,37 @@ Route::middleware('auth', 'force.password.change')->group(function () {
         Route::patch('/enrollments/{moduleRecord}/section', [AdminController::class, 'assignSection'])->name('enrollments.section');
         Route::patch('/enrollments/{moduleRecord}/encode', [AdminController::class, 'encodeCourse'])->name('enrollments.encode');
         Route::get('/classrooms', [ClassroomController::class, 'adminIndex'])->name('classrooms');
+        Route::get('/classrooms/create', [ClassroomController::class, 'adminCreate'])->name('classrooms.create');
+        Route::post('/classrooms', [ClassroomController::class, 'adminStore'])->name('classrooms.store');
         Route::get('/classrooms/{classroom}', [ClassroomController::class, 'adminShow'])->name('classrooms.show');
         Route::patch('/classrooms/{classroom}/status', [ClassroomController::class, 'adminToggleStatus'])->name('classrooms.status');
         Route::post('/classrooms/{classroom}/assign-faculty', [ClassroomController::class, 'adminAssignFaculty'])->name('classrooms.assign-faculty');
         Route::get('/classrooms/{classroom}/export', [ClassroomController::class, 'adminExport'])->name('classrooms.export');
         Route::get('/documents', [AdminController::class, 'documents'])->name('documents');
         Route::patch('/documents/{documentRequest}', [AdminController::class, 'updateDocument'])->name('documents.update');
+        Route::delete('/documents/{documentRequest}', [AdminController::class, 'deleteDocument'])->name('documents.delete');
         Route::get('/forum', [AdminController::class, 'forum'])->name('forum');
+        Route::get('/forum/{forumThread}', [AdminController::class, 'showForumThread'])->name('forum.show');
+        Route::post('/forum/{forumThread}/toggle-hide', [AdminController::class, 'toggleHideForumThread'])->name('forum.toggleHide');
+        Route::post('/forum/{forumThread}/flag', [AdminController::class, 'flagForumThread'])->name('forum.flag');
+        Route::delete('/forum/{forumThread}', [AdminController::class, 'deleteForumThread'])->name('forum.delete');
         Route::get('/audit-trail', [AdminController::class, 'auditTrail'])->name('audit-trail');
         Route::get('/system-monitoring', [AdminController::class, 'systemMonitoring'])->name('system-monitoring');
         Route::get('/users', [AdminController::class, 'users'])->name('users');
         Route::get('/faculty', [AdminController::class, 'facultyDirectory'])->name('faculty');
         Route::get('/faculty/{user}/show', [AdminController::class, 'facultyShow'])->name('faculty.show');
         Route::patch('/faculty/{user}/toggle-status', [AdminController::class, 'toggleFacultyStatus'])->name('faculty.toggle-status');
-        Route::patch('/users/{user}/activate', [AdminController::class, 'activateUser'])->name('users.activate');
+        
+        Route::get('/users/{user}', [AdminController::class, 'showUser'])->name('users.show');
+        Route::get('/users/{user}/edit', [AdminController::class, 'editUser'])->name('users.edit');
+        Route::patch('/users/{user}/edit', [AdminController::class, 'editUser']);
+        Route::delete('/users/{user}', [AdminController::class, 'deleteUser'])->name('users.delete');
+        Route::patch('/users/{user}/activate', [AdminController::class, 'toggleUserStatus'])->name('users.activate');
+        
         // Bulk import routes
-        Route::get('/users/template/download', [AdminController::class, 'downloadStudentTemplate'])->name('users.template.download');
-        Route::post('/users/import', [AdminController::class, 'importStudents'])->name('users.import');
-        Route::get('/users/{user}/show', [AdminController::class, 'showStudent'])->name('users.show');
-        Route::get('/users/{user}/edit', [AdminController::class, 'editStudent'])->name('users.edit');
-        Route::post('/users/{user}/edit', [AdminController::class, 'editStudent']);
+        Route::get('/users/template/student', [AdminController::class, 'downloadStudentTemplate'])->name('users.template.student');
+        Route::get('/users/template/admin', [AdminController::class, 'downloadAdminTemplate'])->name('users.template.admin');
+        Route::post('/users/import', [AdminController::class, 'importUsers'])->name('users.import');
         Route::patch('/users/{user}/toggle-status', [AdminController::class, 'toggleStudentStatus'])->name('users.toggle-status');
         Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
         Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
@@ -167,7 +186,6 @@ Route::middleware('auth', 'force.password.change')->group(function () {
         Route::get('/maintenance/backup/{filename}/download', [MaintenanceController::class, 'download'])->name('maintenance.backup.download');
         Route::delete('/maintenance/backup', [MaintenanceController::class, 'deleteBackup'])->name('maintenance.backup.delete');
         Route::post('/maintenance/restore', [MaintenanceController::class, 'restore'])->name('maintenance.restore');
-        Route::post('/maintenance/toggle', [MaintenanceController::class, 'toggleMaintenance'])->name('maintenance.toggle');
         Route::post('/maintenance/schedule', [MaintenanceController::class, 'updateSchedule'])->name('maintenance.schedule');
     });
 });

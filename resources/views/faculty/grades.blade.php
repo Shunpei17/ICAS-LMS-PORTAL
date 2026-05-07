@@ -327,28 +327,111 @@
                 </form>
             </div>
 
+            {{-- Per-Classroom Grading Criteria Configuration --}}
+            <div class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200 mt-6">
+                <div class="flex items-center gap-3 mb-1">
+                    <div class="h-9 w-9 rounded-2xl bg-amber-100 text-amber-600 grid place-items-center flex-shrink-0">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Grading Criteria Configuration</h3>
+                        <p class="text-sm text-slate-500">Set up component weights for each of your classrooms. Total must equal 100%.</p>
+                    </div>
+                </div>
+
+                <div class="mt-4 rounded-2xl bg-sky-50 border border-sky-200 px-4 py-3 flex items-start gap-2 mb-6">
+                    <svg class="w-4 h-4 text-sky-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <p class="text-xs text-sky-700">The institutional passing grade is <strong>75%</strong> (set by Admin). Grades are auto-converted to GPA using the school's equivalency table.</p>
+                </div>
+
+                @if(isset($facultyClassrooms) && $facultyClassrooms->count() > 0)
+                    <div class="space-y-5">
+                        @foreach($facultyClassrooms as $classroom)
+                            @php
+                                $existingCriteria = $classroom->gradingCriteria->count() > 0
+                                    ? $classroom->gradingCriteria->map(fn($c) => ['component_name' => $c->component_name, 'weight' => (float)$c->weight, 'term' => $c->term])->values()->all()
+                                    : [
+                                        ['component_name' => 'Quiz', 'weight' => 30, 'term' => 'Prelim'],
+                                        ['component_name' => 'Assignment', 'weight' => 30, 'term' => 'Midterm'],
+                                        ['component_name' => 'Exam', 'weight' => 40, 'term' => 'Final'],
+                                    ];
+                            @endphp
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5" x-data="{
+                                criteria: @js($existingCriteria),
+                                get totalWeight() { return this.criteria.reduce((s, c) => s + Number(c.weight || 0), 0); },
+                                addRow() { this.criteria.push({ component_name: '', weight: 0, term: 'Prelim' }); },
+                                removeRow(i) { this.criteria.splice(i, 1); }
+                            }">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div>
+                                        <p class="font-bold text-slate-900">{{ $classroom->name }}</p>
+                                        <p class="text-xs font-mono text-slate-400">{{ $classroom->code }}</p>
+                                    </div>
+                                    <span class="inline-flex rounded-full {{ $classroom->gradingCriteria->count() > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }} px-3 py-1 text-xs font-bold">
+                                        {{ $classroom->gradingCriteria->count() > 0 ? 'Configured' : 'Default' }}
+                                    </span>
+                                </div>
+
+                                <form method="POST" action="{{ route('faculty.classrooms.grading-criteria.store', $classroom->id) }}">
+                                    @csrf
+                                    <div class="space-y-2">
+                                        <template x-for="(item, idx) in criteria" :key="idx">
+                                            <div class="flex flex-wrap sm:flex-nowrap items-center gap-2 bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                                                <input type="text" x-model="item.component_name" :name="'criteria['+idx+'][component_name]'" placeholder="Component name" required class="flex-1 min-w-[140px] rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                                                <div class="relative w-24">
+                                                    <input type="number" x-model.number="item.weight" :name="'criteria['+idx+'][weight]'" min="0" max="100" step="0.01" required class="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 pr-7">
+                                                    <span class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-slate-400 text-sm pointer-events-none">%</span>
+                                                </div>
+                                                <select x-model="item.term" :name="'criteria['+idx+'][term]'" required class="w-28 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                                                    <option>Prelim</option><option>Midterm</option><option>Final</option>
+                                                </select>
+                                                <button type="button" @click="removeRow(idx)" class="text-rose-500 hover:bg-rose-50 p-1.5 rounded-lg transition" title="Remove">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                </button>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <div class="mt-3 flex items-center justify-between">
+                                        <button type="button" @click="addRow" class="text-xs font-semibold bg-white border border-slate-200 text-slate-700 px-3 py-1.5 rounded-xl hover:bg-slate-100 transition">+ Add Component</button>
+                                        <div class="text-right">
+                                            <p class="text-sm font-semibold" :class="totalWeight === 100 ? 'text-emerald-600' : 'text-rose-600'">Total: <span x-text="totalWeight"></span>%</p>
+                                            <p x-show="totalWeight !== 100" x-cloak class="text-xs text-rose-500 mt-0.5">Must equal 100% to save.</p>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 pt-3 border-t border-slate-200">
+                                        <button type="submit" :disabled="totalWeight !== 100"
+                                                :class="totalWeight === 100 ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'"
+                                                class="rounded-xl px-5 py-2 text-sm font-semibold transition">Save Criteria</button>
+                                    </div>
+                                </form>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center">
+                        <p class="text-sm font-medium text-slate-600">No classrooms assigned yet.</p>
+                        <p class="text-xs text-slate-400 mt-1">Create a classroom first, then configure grading criteria here.</p>
+                    </div>
+                @endif
+            </div>
+
             <script>
                 document.addEventListener('DOMContentLoaded', function() {
                     const table = document.getElementById('grades-table');
                     if (!table) return;
-
-                    const rows = table.querySelectorAll('tbody tr');
-                    rows.forEach(row => {
+                    const PASSING_GRADE = 75;
+                    table.querySelectorAll('tbody tr').forEach(row => {
                         const inputs = row.querySelectorAll('.grade-input');
                         const avgDisplay = row.querySelector('.average-display');
                         const remarksDisplay = row.querySelector('.remarks-display');
-
                         if (inputs.length === 0) return;
-
                         const calculate = () => {
                             const quiz = parseFloat(inputs[0].value) || 0;
                             const assignment = parseFloat(inputs[1].value) || 0;
                             const exam = parseFloat(inputs[2].value) || 0;
-
                             const average = (quiz * 0.3) + (assignment * 0.3) + (exam * 0.4);
                             avgDisplay.textContent = average.toFixed(2);
-
-                            if (average >= 75) {
+                            if (average >= PASSING_GRADE) {
                                 remarksDisplay.textContent = 'Pass';
                                 remarksDisplay.className = 'remarks-display inline-flex rounded-full px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700';
                             } else {
@@ -356,10 +439,7 @@
                                 remarksDisplay.className = 'remarks-display inline-flex rounded-full px-3 py-1 text-xs font-semibold bg-rose-100 text-rose-700';
                             }
                         };
-
-                        inputs.forEach(input => {
-                            input.addEventListener('input', calculate);
-                        });
+                        inputs.forEach(input => input.addEventListener('input', calculate));
                     });
                 });
             </script>

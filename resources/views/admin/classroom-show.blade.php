@@ -69,4 +69,23 @@
             <div class="mt-4">{{ $students->links() }}</div>
         </section>
     </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const exportToggle = document.getElementById('exportToggle');
+            const exportMenu = document.getElementById('exportMenu');
+            if (exportToggle && exportMenu) {
+                exportToggle.addEventListener('click', () => {
+                    exportMenu.classList.toggle('hidden');
+                });
+                
+                // Close when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!exportToggle.contains(e.target) && !exportMenu.contains(e.target)) {
+                        exportMenu.classList.add('hidden');
+                    }
+                });
+            }
+        });
+    </script>
 @endsection

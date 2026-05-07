@@ -6,19 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Events\AdminModelChanged;
 
-use Illuminate\Support\Facades\Event;
-
-class ForumThread extends Model
+class ForumReply extends Model
 {
     protected $fillable = [
         'user_id',
-        'title',
+        'forum_thread_id',
         'content',
-        'category',
-        'status',
         'is_visible',
         'is_flagged',
-        'views',
     ];
 
     public function user(): BelongsTo
@@ -26,20 +21,19 @@ class ForumThread extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function replies(): \Illuminate\Database\Eloquent\Relations\HasMany
+    public function thread(): BelongsTo
     {
-        return $this->hasMany(ForumReply::class, 'forum_thread_id');
+        return $this->belongsTo(ForumThread::class, 'forum_thread_id');
     }
 
     protected static function booted(): void
     {
         static::created(function ($model) {
-            event(new AdminModelChanged('forum_thread', $model->id, 'created'));
+            event(new AdminModelChanged('forum_reply', $model->id, 'created'));
         });
 
-        // keep updates quieter; only broadcast create/delete
         static::deleted(function ($model) {
-            event(new AdminModelChanged('forum_thread', $model->id, 'deleted'));
+            event(new AdminModelChanged('forum_reply', $model->id, 'deleted'));
         });
     }
 }

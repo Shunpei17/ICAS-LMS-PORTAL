@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Middleware\CheckForcePasswordChange;
-use App\Http\Middleware\CheckMaintenanceMode;
 use App\Http\Middleware\EnsureClassroomActive;
 use App\Http\Middleware\RoleMiddleware;
 use Illuminate\Foundation\Application;
@@ -19,11 +18,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => RoleMiddleware::class,
             'classroom.active' => EnsureClassroomActive::class,
             'force.password.change' => CheckForcePasswordChange::class,
-            'maintenance' => CheckMaintenanceMode::class,
-        ]);
-        // Apply maintenance check to every web request
-        $middleware->web(append: [
-            CheckMaintenanceMode::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

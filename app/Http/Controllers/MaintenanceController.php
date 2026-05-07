@@ -23,8 +23,6 @@ class MaintenanceController extends Controller
      */
     public function index(): View
     {
-        $maintenanceMode = $this->settings->get('maintenance_mode', '0') === '1';
-        $maintenanceReason = $this->settings->get('maintenance_reason', '');
         $scheduledBackup = $this->settings->get('backup_schedule', 'none');
         $lastBackup = null;
         $backupHistory = collect();
@@ -53,12 +51,9 @@ class MaintenanceController extends Controller
         $healthChecks = [
             ['label' => 'Database Connection', 'ok' => $dbConnected,        'detail' => $dbConnected ? 'MySQL connected' : 'Connection failed'],
             ['label' => 'Backup Storage',       'ok' => $backupDirWritable, 'detail' => $backupDirWritable ? 'Directory writable' : 'Storage not writable'],
-            ['label' => 'Maintenance Mode',     'ok' => ! $maintenanceMode,  'detail' => $maintenanceMode ? 'ACTIVE — portal locked' : 'Off — portal running normally'],
         ];
 
         return view('admin.maintenance', compact(
-            'maintenanceMode',
-            'maintenanceReason',
             'scheduledBackup',
             'lastBackup',
             'dbSizeMb',
@@ -175,24 +170,6 @@ class MaintenanceController extends Controller
         } catch (\Throwable $e) {
             return back()->with('error', 'Restore failed: '.$e->getMessage());
         }
-    }
-
-    /**
-     * Toggle maintenance mode on/off.
-     */
-    public function toggleMaintenance(Request $request): RedirectResponse
-    {
-        $validated = $request->validate([
-            'maintenance_mode' => 'required|in:0,1',
-            'maintenance_reason' => 'nullable|string|max:500',
-        ]);
-
-        $this->settings->set('maintenance_mode', $validated['maintenance_mode']);
-        $this->settings->set('maintenance_reason', $validated['maintenance_reason'] ?? '');
-
-        $state = $validated['maintenance_mode'] === '1' ? 'ENABLED' : 'DISABLED';
-
-        return back()->with('status', "Maintenance mode has been {$state}.");
     }
 
     /**

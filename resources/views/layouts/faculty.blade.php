@@ -80,7 +80,7 @@
                     <div class="h-14 w-14 rounded-3xl bg-white/20 grid place-items-center text-white text-2xl font-bold">{{ $initials }}</div>
                     <div>
                         <p class="text-base font-semibold text-white">Faculty Portal</p>
-                        <p class="text-xs text-green-100">ICAS</p>
+                        <p class="text-[10px] font-bold text-green-200 uppercase tracking-widest mt-0.5 opacity-80">{{ $activeTerm }}</p>
                     </div>
                 </div>
 

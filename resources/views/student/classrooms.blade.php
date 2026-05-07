@@ -114,11 +114,19 @@
 
                             <form method="POST" action="{{ route('student.classrooms.enroll', $room['id']) }}" class="mt-auto pt-4">
                                 @csrf
-                                <button type="submit"
-                                        class="w-full rounded-2xl bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 transition flex items-center justify-center gap-2">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                    Join Classroom
-                                </button>
+                                @if($isEnrollmentPeriod)
+                                    <button type="submit"
+                                            class="w-full rounded-2xl bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700 transition flex items-center justify-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                                        Join Classroom
+                                    </button>
+                                @else
+                                    <button type="button" disabled
+                                            class="w-full rounded-2xl bg-slate-200 px-4 py-2 text-sm font-bold text-slate-400 cursor-not-allowed flex items-center justify-center gap-2">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                                        Enrollment Closed
+                                    </button>
+                                @endif
                             </form>
                         </article>
                     @endforeach

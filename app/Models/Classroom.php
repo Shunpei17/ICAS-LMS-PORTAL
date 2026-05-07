@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Classroom extends Model
 {
@@ -21,6 +22,8 @@ class Classroom extends Model
         'schedule',
         'description',
         'status',
+        'academic_year',
+        'semester',
     ];
 
     /**
@@ -46,6 +49,14 @@ class Classroom extends Model
         return $this->belongsToMany(User::class, 'classroom_students', 'classroom_id', 'user_id')
             ->withPivot('enrolled_at')
             ->withTimestamps();
+    }
+
+    /**
+     * Grading criteria configured by the faculty for this classroom.
+     */
+    public function gradingCriteria(): HasMany
+    {
+        return $this->hasMany(ClassroomGradingCriteria::class);
     }
 
     /**

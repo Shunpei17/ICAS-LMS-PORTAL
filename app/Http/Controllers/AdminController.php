@@ -15,6 +15,7 @@ use App\Services\StudentBulkImportService;
 use App\Services\SystemSettingsService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use App\Models\ForumThread;
+use App\Models\ForumReply;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Builder;
@@ -67,8 +68,12 @@ class AdminController extends Controller
             ->map(fn ($level) => ['label' => $level, 'count' => User::where('role', 'student')->where('academic_level', $level)->count()])
             ->all();
 
-        $courseStats = collect(['BSIT', 'BSHM'])
-            ->map(fn ($c) => ['label' => $c, 'count' => User::where('role', 'student')->where('course', $c)->count()])
+        $courseStats = User::where('role', 'student')
+            ->whereNotNull('course')
+            ->where('course', '!=', '')
+            ->select('course as label', DB::raw('count(*) as count'))
+            ->groupBy('course')
+            ->get()
             ->all();
 
         return view('admin.dashboard', compact(
@@ -137,14 +142,13 @@ class AdminController extends Controller
                 return;
             }
 
-            $headers = ['Student Number', 'Full Name', 'Email', 'Academic Level'];
+            $headers = ['Student Number', 'Full Name', 'Email', 'Academic Level', 'Course', 'Strand'];
             fputcsv($output, $headers);
 
-            // Example rows
             $examples = [
-                ['STU-001', 'Juan Dela Cruz', 'juan.delacruz@school.edu', '1st Year College'],
-                ['STU-002', 'Maria Santos', 'maria.santos@school.edu', '2nd Year College'],
-                ['STU-003', 'Carlos Reyes', 'carlos.reyes@school.edu', 'Senior High School'],
+                ['STU-001', 'Juan Dela Cruz', 'juan.delacruz@school.edu', '1st Year College', 'BSIT', ''],
+                ['STU-002', 'Maria Santos', 'maria.santos@school.edu', '2nd Year College', 'BSHM', ''],
+                ['STU-003', 'Carlos Reyes', 'carlos.reyes@school.edu', 'Senior High School', '', 'STEM'],
             ];
             foreach ($examples as $row) {
                 fputcsv($output, $row);
@@ -154,8 +158,37 @@ class AdminController extends Controller
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    public function importStudents(ImportStudentCsvRequest $request): RedirectResponse
+    public function downloadAdminTemplate(): StreamedResponse
     {
+        $filename = 'admin-import-template-'.now()->format('Ymd').'.csv';
+
+        return response()->streamDownload(function (): void {
+            $output = fopen('php://output', 'w');
+            if ($output === false) {
+                return;
+            }
+
+            $headers = ['Admin unique number', 'Full Name', 'Email', 'Department'];
+            fputcsv($output, $headers);
+
+            $examples = [
+                ['ADM-001', 'System Admin One', 'admin.one@school.edu', 'IT Department'],
+                ['ADM-002', 'Registrar Admin', 'registrar@school.edu', 'Registrar'],
+            ];
+            foreach ($examples as $row) {
+                fputcsv($output, $row);
+            }
+
+            fclose($output);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    public function importUsers(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'csv_file' => 'required|file|mimes:csv,txt|max:2048',
+        ]);
+
         $service = new StudentBulkImportService;
         $result = $service->import($request->file('csv_file'));
 
@@ -175,40 +208,45 @@ class AdminController extends Controller
         return back()->with('status', $message);
     }
 
-    public function showStudent(User $user): View
+    public function showUser(User $user): View
     {
-        abort_if($user->role !== 'student', 403);
-
         return view('admin.users.show', compact('user'));
     }
 
-    public function editStudent(Request $request, User $user): View|RedirectResponse
+    public function editUser(Request $request, User $user): View|RedirectResponse
     {
-        abort_if($user->role !== 'student', 403);
-
         if ($request->method() === 'GET') {
             return view('admin.users.edit', compact('user'));
         }
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'academic_level' => 'required|in:Senior High School,1st Year College,2nd Year College,3rd Year College',
+            'role' => 'required|in:student,faculty,admin',
+            'academic_level' => 'nullable|string',
             'course' => 'nullable|string|max:255',
+            'strand' => 'nullable|string|max:255',
+            'department' => 'nullable|string|max:255',
         ]);
 
         $user->update($validated);
 
-        return redirect()->route('admin.users')->with('status', "Student {$user->name} updated successfully.");
+        return redirect()->route('admin.users')->with('status', "User {$user->name} updated successfully.");
     }
 
-    public function toggleStudentStatus(Request $request, User $user): RedirectResponse
+    public function deleteUser(User $user): RedirectResponse
     {
-        abort_if($user->role !== 'student', 403);
+        $name = $user->name;
+        $user->delete();
 
+        return redirect()->route('admin.users')->with('status', "User {$name} has been permanently deleted.");
+    }
+
+    public function toggleUserStatus(Request $request, User $user): RedirectResponse
+    {
         $newStatus = $request->input('status') === 'active' ? 'inactive' : 'active';
         $user->update(['status' => $newStatus]);
 
-        return back()->with('status', "Student {$user->name} has been {$newStatus}.");
+        return back()->with('status', "User {$user->name} has been {$newStatus}.");
     }
 
     public function settings(): View
@@ -256,11 +294,14 @@ class AdminController extends Controller
             'enrollment_start' => 'nullable|date',
             'enrollment_end' => 'nullable|date',
             'final_exam_start' => 'nullable|date',
-            'passing_grade' => 'nullable|integer|min:0|max:100',
+            'grading_scale' => 'nullable|string|max:30',
             'theme_admin_color' => 'nullable|string|max:30',
             'theme_faculty_color' => 'nullable|string|max:30',
             'theme_student_color' => 'nullable|string|max:30',
         ]);
+
+        // Force the passing grade to the institutional constant — never accept user input
+        $data['passing_grade'] = \App\Services\GradingService::PASSING_GRADE;
 
         $settings = new SystemSettingsService;
         foreach ($data as $k => $v) {
@@ -284,7 +325,7 @@ class AdminController extends Controller
             })
             ->all();
 
-        $baseQuery = $this->queryAttendanceRecords($filters);
+        $baseQuery = $this->queryAttendanceRecords($filters, $request->has('history'));
 
         $totalRecords = (clone $baseQuery)->count();
         $presentRecords = (clone $baseQuery)->where('status', 'Present')->count();
@@ -393,7 +434,11 @@ class AdminController extends Controller
         $courseFilter = $request->query('course', '');
 
         $coursesData = StudentModuleRecord::query()
-            ->whereNotNull('grade_percent')
+            ->when(! $request->has('history'), function ($q) {
+                $settings = new SystemSettingsService();
+                $q->where('academic_year', $settings->get('academic_year'))
+                  ->where('semester', $settings->get('current_semester'));
+            })
             ->when($statusFilter !== '', function ($q) use ($statusFilter) {
                 if ($statusFilter === 'Pending') {
                     $q->where('grade_verified', false);
@@ -446,6 +491,11 @@ class AdminController extends Controller
         $allGradesQuery = StudentModuleRecord::query()
             ->with(['user:id,name,academic_level,course'])
             ->whereNotNull('grade_percent')
+            ->when(! $request->has('history'), function ($q) {
+                $settings = new SystemSettingsService();
+                $q->where('academic_year', $settings->get('academic_year'))
+                  ->where('semester', $settings->get('current_semester'));
+            })
             ->when($statusFilter !== '', function ($q) use ($statusFilter) {
                 if ($statusFilter === 'Pending') {
                     $q->where('grade_verified', false);
@@ -511,6 +561,11 @@ class AdminController extends Controller
         $records = StudentModuleRecord::query()
             ->with(['user:id,name,email,academic_level,course'])
             ->whereNotNull('grade_percent')
+            ->when(! $request->has('history'), function ($q) {
+                $settings = new SystemSettingsService();
+                $q->where('academic_year', $settings->get('academic_year'))
+                  ->where('semester', $settings->get('current_semester'));
+            })
             ->when($subjectFilter, function ($query, $subjectFilter) {
                 return $query->where('module_code', $subjectFilter);
             })
@@ -643,13 +698,14 @@ class AdminController extends Controller
         $pending = DocumentRequest::where('status', 'Pending')->count();
         $processing = DocumentRequest::where('status', 'Processing')->count();
         $completed = DocumentRequest::where('status', 'Completed')->count();
+        $rejected = DocumentRequest::where('status', 'Rejected')->count();
         $total = DocumentRequest::count();
 
         $summary = [
             ['label' => 'Pending', 'value' => (string) $pending, 'color' => 'amber'],
             ['label' => 'Processing', 'value' => (string) $processing, 'color' => 'sky'],
             ['label' => 'Completed', 'value' => (string) $completed, 'color' => 'emerald'],
-            ['label' => 'Total', 'value' => (string) $total, 'color' => 'slate'],
+            ['label' => 'Rejected', 'value' => (string) $rejected, 'color' => 'rose'],
         ];
 
         return view('admin.documents', compact('requests', 'search', 'type', 'status', 'summary'));
@@ -658,34 +714,64 @@ class AdminController extends Controller
     public function updateDocument(Request $request, DocumentRequest $documentRequest): RedirectResponse
     {
         $validated = $request->validate([
-            'status' => ['required', 'string'],
+            'status' => ['required', 'string', 'in:Pending,Processing,Completed,Rejected'],
         ]);
 
         $documentRequest->update(['status' => $validated['status']]);
 
-        return back()->with('status', 'Document request status updated.');
+        return back()->with('status', 'Document request status updated to ' . $validated['status']);
+    }
+
+    public function deleteDocument(DocumentRequest $documentRequest): RedirectResponse
+    {
+        $name = $documentRequest->user->name ?? 'Request';
+        $documentRequest->delete();
+
+        return back()->with('status', 'Document request for ' . $name . ' has been permanently deleted.');
     }
 
     public function forum(): View
     {
-        $threads = ForumThread::with('user')
+        $threads = ForumThread::with(['user', 'replies'])
             ->latest()
-            ->limit(12)
-            ->get();
+            ->paginate(15);
 
         $totalPosts = ForumThread::count();
-        $totalThreads = $totalPosts; // threads represent top-level posts
-        $distinctUsers = ForumThread::select('user_id')->distinct()->count();
-        $flagged = ForumThread::where('status', 'flagged')->count();
+        $totalReplies = ForumReply::count();
+        $flagged = ForumThread::where('is_flagged', true)->count();
 
         $stats = [
             ['label' => 'Total Posts', 'value' => (string) $totalPosts, 'color' => 'slate'],
-            ['label' => 'Total Threads', 'value' => (string) $totalThreads, 'color' => 'slate'],
-            ['label' => 'Flagged', 'value' => (string) $flagged, 'color' => 'rose'],
-            ['label' => 'Active Users', 'value' => (string) $distinctUsers, 'color' => 'emerald'],
+            ['label' => 'Total Replies', 'value' => (string) $totalReplies, 'color' => 'slate'],
+            ['label' => 'Flagged Analytics', 'value' => (string) $flagged, 'color' => 'rose'],
         ];
 
         return view('admin.forum', compact('threads', 'stats'));
+    }
+
+    public function showForumThread(ForumThread $forumThread): View
+    {
+        $forumThread->load(['user', 'replies.user']);
+        return view('admin.forum-show', compact('forumThread'));
+    }
+
+    public function toggleHideForumThread(ForumThread $forumThread): RedirectResponse
+    {
+        $forumThread->update(['is_visible' => ! $forumThread->is_visible]);
+        $status = $forumThread->is_visible ? 'visible' : 'hidden';
+        return back()->with('status', "Post is now {$status}.");
+    }
+
+    public function flagForumThread(ForumThread $forumThread): RedirectResponse
+    {
+        $forumThread->update(['is_flagged' => true]);
+        return back()->with('status', 'Post has been flagged for review.');
+    }
+
+    public function deleteForumThread(ForumThread $forumThread): RedirectResponse
+    {
+        $forumThread->delete();
+        return back()->with('status', 'Post and all associated replies have been permanently deleted.');
     }
 
     /**
@@ -721,9 +807,14 @@ class AdminController extends Controller
     /**
      * @param  array{search: string, status: string, faculty_user_id: string, academic_level: string, course: string, from_date: string, to_date: string}  $filters
      */
-    private function queryAttendanceRecords(array $filters): Builder
+    private function queryAttendanceRecords(array $filters, bool $showHistory = false): Builder
     {
         return FacultyAttendanceRecord::query()
+            ->when(! $showHistory, function ($q) {
+                $settings = new SystemSettingsService();
+                $q->where('academic_year', $settings->get('academic_year'))
+                  ->where('semester', $settings->get('current_semester'));
+            })
             ->when($filters['search'] !== '', function (Builder $query) use ($filters): void {
                 $query->where('student_name', 'like', '%'.$filters['search'].'%');
             })
@@ -785,6 +876,11 @@ class AdminController extends Controller
 
         $enrollments = StudentModuleRecord::query()
             ->where('enrollment_status', $tab === 'pending' ? 'faculty_approved' : $tab)
+            ->when(! $request->has('history'), function ($q) {
+                $settings = new SystemSettingsService();
+                $q->where('academic_year', $settings->get('academic_year'))
+                  ->where('semester', $settings->get('current_semester'));
+            })
             ->with(['user:id,name,email'])
             ->when($courseFilter !== '', function ($query) use ($courseFilter): void {
                 $query->where('module_code', $courseFilter);
@@ -1036,7 +1132,6 @@ class AdminController extends Controller
     public function facultyDirectory(Request $request): View
     {
         $search = $request->query('search', '');
-        $departmentFilter = $request->query('department', '');
         $statusFilter = $request->query('status', '');
 
         $query = User::where('role', 'faculty')
@@ -1045,9 +1140,6 @@ class AdminController extends Controller
                     $q2->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%");
                 });
-            })
-            ->when($departmentFilter, function ($q) use ($departmentFilter) {
-                $q->where('department', $departmentFilter);
             })
             ->when($statusFilter, function ($q) use ($statusFilter) {
                 $q->where('status', $statusFilter);
@@ -1079,7 +1171,7 @@ class AdminController extends Controller
             }
         }
 
-        return view('admin.faculty.index', compact('facultyList', 'totalFaculty', 'departmentStats', 'search', 'departmentFilter', 'statusFilter', 'departments'));
+        return view('admin.faculty.index', compact('facultyList', 'totalFaculty', 'departmentStats', 'search', 'statusFilter', 'departments'));
     }
 
     public function facultyShow(User $user): View
