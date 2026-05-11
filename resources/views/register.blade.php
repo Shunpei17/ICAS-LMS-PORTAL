@@ -484,17 +484,6 @@
                             </select>
                         </div>
 
-                        <div class="field-wrap relative student-only-field transition-all duration-300 ease-in-out overflow-hidden" id="strand_wrap" style="max-height:0; opacity:0;">
-                            <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
-                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"></path></svg>
-                            </div>
-                            <select name="strand" id="strand" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-white outline-none transition">
-                                <option value="" disabled {{ !old('strand') ? 'selected' : '' }}>Select Strand</option>
-                                <option value="ICT" {{ old('strand') == 'ICT' ? 'selected' : '' }}>ICT</option>
-                                <option value="HE" {{ old('strand') == 'HE' ? 'selected' : '' }}>HE</option>
-                            </select>
-                        </div>
-
                         <div class="field-wrap relative student-only-field">
                             <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"></path></svg>
@@ -507,8 +496,18 @@
                                 <option value="3rd Year College" {{ old('academic_level') == '3rd Year College' ? 'selected' : '' }}>3rd Year College</option>
                             </select>
                         </div>
+                        <div class="field-wrap relative student-only-field transition-all duration-300 ease-in-out overflow-hidden" id="strand_wrap" style="max-height:0; opacity:0; display:none;">
+                            <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 14l9-5-9-5-9 5 9 5z"></path></svg>
+                            </div>
+                            <select name="strand" id="strand" class="auth-input h-12 w-full rounded-2xl py-3 pl-14 pr-4 text-sm text-white outline-none transition">
+                                <option value="" disabled {{ !old('strand') ? 'selected' : '' }}>Select Strand</option>
+                                <option value="ICT" {{ old('strand') == 'ICT' ? 'selected' : '' }}>ICT</option>
+                                <option value="HE" {{ old('strand') == 'HE' ? 'selected' : '' }}>HE</option>
+                            </select>
+                        </div>
 
-                        <div class="field-wrap relative student-only-field" id="course_wrap">
+                        <div class="field-wrap relative student-only-field transition-all duration-300 ease-in-out overflow-hidden" id="course_wrap" style="max-height:0; opacity:0; display:none;">
                             <div class="field-icon pointer-events-none absolute inset-y-0 left-0 my-auto ml-3">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
                             </div>
@@ -540,128 +539,88 @@
 
             document.querySelectorAll('[data-role-btn]').forEach(function (button) {
                 const isActive = button.getAttribute('data-role-btn') === role;
-
                 button.classList.toggle('role-btn-active', isActive);
                 button.classList.toggle('role-btn-idle', !isActive);
             });
 
             const studentFields = document.querySelectorAll('.student-only-field');
-            const academicLevelSelect = document.getElementById('academic_level');
-            const courseSelect = document.getElementById('course');
-            const courseWrap = document.getElementById('course_wrap');
-            const strandWrap = document.getElementById('strand_wrap');
-            const strandSelect = document.getElementById('strand');
-
             studentFields.forEach(field => {
+                const select = field.querySelector('select');
                 if (role === 'student') {
-                    field.style.display = 'block';
-                    if (field.id !== 'course_wrap') {
-                        field.querySelector('select').setAttribute('required', 'required');
+                    if (field.id !== 'course_wrap' && field.id !== 'strand_wrap') {
+                        field.style.display = 'block';
+                        select?.setAttribute('required', 'required');
                     }
                 } else {
                     field.style.display = 'none';
-                    field.querySelector('select').removeAttribute('required');
+                    select?.removeAttribute('required');
+                    if (select) select.value = '';
                 }
             });
 
-            // Re-evaluate course field visibility based on academic level if role is student
-            if (role === 'student' && academicLevelSelect) {
-                if (academicLevelSelect.value === 'Senior High School') {
-                    courseWrap.style.display = 'none';
-                    courseSelect.removeAttribute('required');
-                    courseSelect.setAttribute('disabled', 'disabled');
-                    courseSelect.value = '';
-                    // show strand smoothly and require it
-                    if (strandWrap) {
-                        strandWrap.style.maxHeight = '160px';
-                        strandWrap.style.opacity = '1';
-                        strandSelect?.setAttribute('required', 'required');
-                    }
-                } else {
-                    courseWrap.style.display = 'block';
-                    courseSelect.setAttribute('required', 'required');
-                    courseSelect.removeAttribute('disabled');
-                    // hide strand instantly and clear value
-                    if (strandWrap) {
-                        strandWrap.style.maxHeight = '0';
-                        strandWrap.style.opacity = '0';
-                        strandSelect?.removeAttribute('required');
-                        strandSelect.value = '';
-                    }
-                }
+            if (role === 'student') {
+                updateAcademicContext();
+            } else {
+                hideWrap(document.getElementById('course_wrap'));
+                hideWrap(document.getElementById('strand_wrap'));
+            }
+        }
+
+        function updateAcademicContext() {
+            const levelSelect = document.getElementById('academic_level');
+            const courseWrap = document.getElementById('course_wrap');
+            const strandWrap = document.getElementById('strand_wrap');
+            const courseSelect = document.getElementById('course');
+            const strandSelect = document.getElementById('strand');
+
+            if (!levelSelect || levelSelect.value === '') {
+                hideWrap(courseWrap);
+                hideWrap(strandWrap);
+                return;
             }
 
-            // Listen for academic level changes to toggle Strand live and disable/enable Course
-            document.getElementById('academic_level')?.addEventListener('change', function (ev) {
-                const val = ev.target.value;
-                if (val === 'Senior High School') {
-                    // hide/disable course
-                    if (courseWrap) courseWrap.style.display = 'none';
-                    if (courseSelect) {
-                        courseSelect.removeAttribute('required');
-                        courseSelect.setAttribute('disabled', 'disabled');
-                        courseSelect.value = '';
-                    }
-                    // show strand and require it
-                    if (strandWrap) {
-                        strandWrap.style.maxHeight = '160px';
-                        strandWrap.style.opacity = '1';
-                        strandSelect?.setAttribute('required', 'required');
-                    }
-                } else {
-                    // show/enable course
-                    if (courseWrap) courseWrap.style.display = 'block';
-                    if (courseSelect) {
-                        courseSelect.setAttribute('required', 'required');
-                        courseSelect.removeAttribute('disabled');
-                    }
-                    // hide strand and clear
-                    if (strandWrap) {
-                        strandWrap.style.maxHeight = '0';
-                        strandWrap.style.opacity = '0';
-                        strandSelect?.removeAttribute('required');
-                        strandSelect.value = '';
-                    }
-                }
+            if (levelSelect.value === 'Senior High School') {
+                showWrap(strandWrap, strandSelect);
+                hideWrap(courseWrap, courseSelect);
+            } else {
+                showWrap(courseWrap, courseSelect);
+                hideWrap(strandWrap, strandSelect);
+            }
+        }
+
+        function showWrap(wrap, select) {
+            if (!wrap) return;
+            wrap.style.display = 'block';
+            window.requestAnimationFrame(() => {
+                wrap.style.maxHeight = '160px';
+                wrap.style.opacity = '1';
+                wrap.style.marginTop = '1rem';
             });
+            select?.setAttribute('required', 'required');
+            select?.removeAttribute('disabled');
+        }
+
+        function hideWrap(wrap, select) {
+            if (!wrap) return;
+            wrap.style.maxHeight = '0';
+            wrap.style.opacity = '0';
+            wrap.style.marginTop = '0';
+            select?.removeAttribute('required');
+            select?.setAttribute('disabled', 'disabled');
+            if (select) select.value = '';
+            setTimeout(() => {
+                if (wrap.style.opacity === '0') wrap.style.display = 'none';
+            }, 300);
         }
 
         document.addEventListener('DOMContentLoaded', function () {
             const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
             const hasFinePointer = window.matchMedia('(pointer: fine)').matches;
             const authPanel = document.getElementById('auth-panel');
-            
             const academicLevelSelect = document.getElementById('academic_level');
-            const courseWrap = document.getElementById('course_wrap');
-            const courseSelect = document.getElementById('course');
 
             if (academicLevelSelect) {
-                academicLevelSelect.addEventListener('change', function() {
-                    const role = document.getElementById('selected-role').value;
-                    if (role === 'student') {
-                        if (this.value === 'Senior High School') {
-                            courseWrap.style.display = 'none';
-                            courseSelect.removeAttribute('required');
-                            courseSelect.setAttribute('disabled', 'disabled');
-                            courseSelect.value = '';
-                            if (strandWrap) {
-                                strandWrap.style.maxHeight = '160px';
-                                strandWrap.style.opacity = '1';
-                                strandSelect?.setAttribute('required', 'required');
-                            }
-                        } else {
-                            courseWrap.style.display = 'block';
-                            courseSelect.setAttribute('required', 'required');
-                            courseSelect.removeAttribute('disabled');
-                            if (strandWrap) {
-                                strandWrap.style.maxHeight = '0';
-                                strandWrap.style.opacity = '0';
-                                strandSelect?.removeAttribute('required');
-                                strandSelect.value = '';
-                            }
-                        }
-                    }
-                });
+                academicLevelSelect.addEventListener('change', updateAcademicContext);
             }
 
             if (prefersReducedMotion) {
@@ -690,7 +649,6 @@
                     const relativeY = (event.clientY - rect.top) / rect.height;
                     const rotateY = (relativeX - 0.5) * 7;
                     const rotateX = (0.5 - relativeY) * 7;
-
                     authPanel.style.transform = 'perspective(1100px) rotateX(' + rotateX.toFixed(2) + 'deg) rotateY(' + rotateY.toFixed(2) + 'deg)';
                 });
 
@@ -701,55 +659,30 @@
 
             setRole(@json(old('role', 'student')));
 
-            // Initialize strand and course state based on the current academic level
-            (function initStrandCourseState() {
-                const role = document.getElementById('selected-role').value;
-                if (role === 'student' && academicLevelSelect) {
-                    if (academicLevelSelect.value === 'Senior High School') {
-                        courseWrap.style.display = 'none';
-                        courseSelect.removeAttribute('required');
-                        courseSelect.setAttribute('disabled', 'disabled');
-                        if (strandWrap) {
-                            strandWrap.style.maxHeight = '160px';
-                            strandWrap.style.opacity = '1';
-                            strandSelect?.setAttribute('required', 'required');
-                        }
-                    } else {
-                        courseWrap.style.display = 'block';
-                        courseSelect.setAttribute('required', 'required');
-                        courseSelect.removeAttribute('disabled');
-                        if (strandWrap) {
-                            strandWrap.style.maxHeight = '0';
-                            strandWrap.style.opacity = '0';
-                            strandSelect?.removeAttribute('required');
-                            strandSelect.value = '';
-                        }
-                    }
-                }
-            })();
-
-            // Form submit validation: require strand when visible and clear hidden fields
             const registerForm = document.getElementById('register_form');
             if (registerForm) {
                 registerForm.addEventListener('submit', function (ev) {
-                    if (strandSelect && strandSelect.required && !strandSelect.value) {
-                        ev.preventDefault();
-                        strandSelect.setCustomValidity('Please select a strand for Senior High School');
-                        strandSelect.reportValidity();
-                        strandSelect.focus();
-                        return;
-                    }
+                    const role = document.getElementById('selected-role').value;
+                    const level = document.getElementById('academic_level').value;
+                    const strand = document.getElementById('strand');
+                    const course = document.getElementById('course');
 
-                    if (academicLevelSelect && academicLevelSelect.value === 'Senior High School') {
-                        courseSelect.value = '';
-                        courseSelect.setAttribute('disabled', 'disabled');
-                        courseSelect.removeAttribute('required');
-                    } else {
-                        courseSelect.removeAttribute('disabled');
-                    }
-
-                    if (strandSelect && !strandSelect.required) {
-                        strandSelect.value = '';
+                    if (role === 'student') {
+                        if (level === 'Senior High School') {
+                            if (!strand.value) {
+                                ev.preventDefault();
+                                strand.setCustomValidity('Please select a strand for Senior High School');
+                                strand.reportValidity();
+                                return;
+                            }
+                        } else {
+                            if (!course.value) {
+                                ev.preventDefault();
+                                course.setCustomValidity('Please select a course for College');
+                                course.reportValidity();
+                                return;
+                            }
+                        }
                     }
                 });
             }

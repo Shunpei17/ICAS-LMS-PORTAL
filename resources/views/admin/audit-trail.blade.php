@@ -99,6 +99,9 @@
                 </tbody>
             </table>
         </div>
+        <div class="mt-4">
+            {{ $pagination->links() }}
+        </div>
     </section>
 </div>
 @endsection

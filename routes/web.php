@@ -148,6 +148,7 @@ Route::middleware('auth', 'force.password.change')->group(function () {
         Route::post('/classrooms', [ClassroomController::class, 'adminStore'])->name('classrooms.store');
         Route::get('/classrooms/{classroom}', [ClassroomController::class, 'adminShow'])->name('classrooms.show');
         Route::patch('/classrooms/{classroom}/status', [ClassroomController::class, 'adminToggleStatus'])->name('classrooms.status');
+        Route::delete('/classrooms/{classroom}', [ClassroomController::class, 'adminDestroy'])->name('classrooms.destroy');
         Route::post('/classrooms/{classroom}/assign-faculty', [ClassroomController::class, 'adminAssignFaculty'])->name('classrooms.assign-faculty');
         Route::get('/classrooms/{classroom}/export', [ClassroomController::class, 'adminExport'])->name('classrooms.export');
         Route::get('/documents', [AdminController::class, 'documents'])->name('documents');
@@ -173,11 +174,13 @@ Route::middleware('auth', 'force.password.change')->group(function () {
         
         // Bulk import routes
         Route::get('/users/template/student', [AdminController::class, 'downloadStudentTemplate'])->name('users.template.student');
+        Route::get('/users/template/faculty', [AdminController::class, 'downloadFacultyTemplate'])->name('users.template.faculty');
         Route::get('/users/template/admin', [AdminController::class, 'downloadAdminTemplate'])->name('users.template.admin');
         Route::post('/users/import', [AdminController::class, 'importUsers'])->name('users.import');
         Route::patch('/users/{user}/toggle-status', [AdminController::class, 'toggleStudentStatus'])->name('users.toggle-status');
         Route::get('/settings', [AdminController::class, 'settings'])->name('settings');
         Route::post('/settings', [AdminController::class, 'updateSettings'])->name('settings.update');
+        Route::patch('/settings/password', [AdminController::class, 'updatePassword'])->name('settings.password.update');
         Route::get('/profile', [AdminController::class, 'profile'])->name('profile');
         Route::post('/profile', [AdminController::class, 'updateProfile'])->name('profile.update');
         // Maintenance & Backup

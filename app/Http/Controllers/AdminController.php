@@ -68,6 +68,11 @@ class AdminController extends Controller
             ->map(fn ($level) => ['label' => $level, 'count' => User::where('role', 'student')->where('academic_level', $level)->count()])
             ->all();
 
+        $strandStats = [
+            'ICT' => User::where('role', 'student')->where('academic_level', 'Senior High School')->where('strand', 'ICT')->count(),
+            'HE' => User::where('role', 'student')->where('academic_level', 'Senior High School')->where('strand', 'HE')->count(),
+        ];
+
         $courseStats = User::where('role', 'student')
             ->whereNotNull('course')
             ->where('course', '!=', '')
@@ -82,6 +87,7 @@ class AdminController extends Controller
             'recentActions',
             'pendingUsersCount',
             'levelStats',
+            'strandStats',
             'courseStats'
         ));
     }
@@ -124,10 +130,17 @@ class AdminController extends Controller
         return view('admin.users', compact('filtered', 'stats', 'roleFilter', 'statusFilter', 'search'));
     }
 
-    public function activateUser(Request $request, User $user): RedirectResponse
+    public function toggleUserStatus(Request $request, User $user): RedirectResponse
     {
-        $status = $request->input('status', 'active');
+        $status = $request->input('status');
+        
+        if (!$status) {
+            $status = ($user->status === 'active') ? 'inactive' : 'active';
+        }
+
         $user->update(['status' => $status]);
+
+        AuditTrail::log('Update', 'Users', 'Admin updated status of ' . $user->name . ' to ' . $status);
 
         return back()->with('status', "User {$user->name} has been updated to {$status}.");
     }
@@ -183,6 +196,31 @@ class AdminController extends Controller
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
+    public function downloadFacultyTemplate(): StreamedResponse
+    {
+        $filename = 'faculty-import-template-'.now()->format('Ymd').'.csv';
+
+        return response()->streamDownload(function (): void {
+            $output = fopen('php://output', 'w');
+            if ($output === false) {
+                return;
+            }
+
+            $headers = ['Faculty Unique Number', 'Full Name', 'Email', 'Department'];
+            fputcsv($output, $headers);
+
+            $examples = [
+                ['FAC-001', 'Dr. Maria Fernandez', 'maria.fernandez@school.edu', 'CAS'],
+                ['FAC-002', 'Prof. Juan Santos', 'juan.santos@school.edu', 'CBA'],
+            ];
+            foreach ($examples as $row) {
+                fputcsv($output, $row);
+            }
+
+            fclose($output);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
     public function importUsers(Request $request): RedirectResponse
     {
         $request->validate([
@@ -204,6 +242,8 @@ class AdminController extends Controller
                 ->with('status', $message)
                 ->withErrors(['csv_errors' => $errorSummary]);
         }
+
+        AuditTrail::log('Create', 'Users', 'Admin imported users via CSV: ' . $result['success'] . ' successful');
 
         return back()->with('status', $message);
     }
@@ -238,15 +278,9 @@ class AdminController extends Controller
         $name = $user->name;
         $user->delete();
 
+        AuditTrail::log('Delete', 'Users', 'Admin permanently deleted user: ' . $name);
+
         return redirect()->route('admin.users')->with('status', "User {$name} has been permanently deleted.");
-    }
-
-    public function toggleUserStatus(Request $request, User $user): RedirectResponse
-    {
-        $newStatus = $request->input('status') === 'active' ? 'inactive' : 'active';
-        $user->update(['status' => $newStatus]);
-
-        return back()->with('status', "User {$user->name} has been {$newStatus}.");
     }
 
     public function settings(): View
@@ -254,14 +288,13 @@ class AdminController extends Controller
         $settings = new SystemSettingsService;
 
         $schoolSettings = [
-            'school_name' => $settings->get('school_name', 'ICAS Learning Management System'),
-            'school_code' => $settings->get('school_code', 'ICAS-2024'),
+            'school_name' => 'INFOTECH COLLEGE OF ARTS AND SCIENCES - MARCOS HIGHWAY',
             'academic_year' => $settings->get('academic_year', '2024–2025'),
             'semester' => $settings->get('current_semester', 'Second Semester'),
             'enrollment_start' => $settings->get('enrollment_start', '2025-01-06'),
             'enrollment_end' => $settings->get('enrollment_end', '2025-01-31'),
             'exam_start' => $settings->get('final_exam_start', '2025-03-17'),
-            'timezone' => $settings->get('timezone', 'Asia/Manila (UTC+8)'),
+            'timezone' => $settings->get('timezone', 'Asia/Manila'),
             'default_passing_grade' => (int) $settings->get('passing_grade', 75),
             'grading_scale' => $settings->get('grading_scale', 'gpa'),
             'grade_equivalency' => $settings->get('grade_equivalency', [
@@ -287,13 +320,12 @@ class AdminController extends Controller
     public function updateSettings(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'school_name' => 'nullable|string|max:255',
-            'school_code' => 'nullable|string|max:50',
             'academic_year' => 'nullable|string|max:50',
             'current_semester' => 'nullable|string|max:50',
             'enrollment_start' => 'nullable|date',
             'enrollment_end' => 'nullable|date',
             'final_exam_start' => 'nullable|date',
+            'timezone' => 'nullable|string|max:100',
             'grading_scale' => 'nullable|string|max:30',
             'theme_admin_color' => 'nullable|string|max:30',
             'theme_faculty_color' => 'nullable|string|max:30',
@@ -331,11 +363,6 @@ class AdminController extends Controller
         $presentRecords = (clone $baseQuery)->where('status', 'Present')->count();
         $absentRecords = (clone $baseQuery)->where('status', 'Absent')->count();
         $lateRecords = (clone $baseQuery)->where('status', 'Late')->count();
-        $uniqueStudents = (clone $baseQuery)
-            ->select('student_name')
-            ->distinct()
-            ->count('student_name');
-
         $attendanceRate = $totalRecords > 0
             ? (string) round(($presentRecords / $totalRecords) * 100).'%'
             : '0%';
@@ -346,7 +373,6 @@ class AdminController extends Controller
             ['label' => 'Absent', 'value' => (string) $absentRecords],
             ['label' => 'Late', 'value' => (string) $lateRecords],
             ['label' => 'Attendance Rate', 'value' => $attendanceRate],
-            ['label' => 'Unique Students', 'value' => (string) $uniqueStudents],
         ];
 
         $records = (clone $baseQuery)
@@ -432,6 +458,7 @@ class AdminController extends Controller
         $subjectFilter = $request->query('subject', '');
         $academicLevelFilter = $request->query('academic_level', '');
         $courseFilter = $request->query('course', '');
+        $strandFilter = $request->query('strand', '');
 
         $coursesData = StudentModuleRecord::query()
             ->when(! $request->has('history'), function ($q) {
@@ -449,13 +476,16 @@ class AdminController extends Controller
             ->when($subjectFilter !== '', function ($query) use ($subjectFilter) {
                 return $query->where('module_code', $subjectFilter);
             })
-            ->when($academicLevelFilter !== '' || $courseFilter !== '', function ($query) use ($academicLevelFilter, $courseFilter) {
-                $query->whereHas('user', function ($q) use ($academicLevelFilter, $courseFilter) {
+            ->when($academicLevelFilter !== '' || $courseFilter !== '' || $strandFilter !== '', function ($query) use ($academicLevelFilter, $courseFilter, $strandFilter) {
+                $query->whereHas('user', function ($q) use ($academicLevelFilter, $courseFilter, $strandFilter) {
                     if ($academicLevelFilter !== '') {
                         $q->where('academic_level', $academicLevelFilter);
                     }
                     if ($courseFilter !== '') {
                         $q->where('course', $courseFilter);
+                    }
+                    if ($strandFilter !== '') {
+                        $q->where('strand', $strandFilter);
                     }
                 });
             })
@@ -506,13 +536,16 @@ class AdminController extends Controller
             ->when($subjectFilter !== '', function ($query) use ($subjectFilter) {
                 return $query->where('module_code', $subjectFilter);
             })
-            ->when($academicLevelFilter !== '' || $courseFilter !== '', function ($query) use ($academicLevelFilter, $courseFilter) {
-                $query->whereHas('user', function ($q) use ($academicLevelFilter, $courseFilter) {
+            ->when($academicLevelFilter !== '' || $courseFilter !== '' || $strandFilter !== '', function ($query) use ($academicLevelFilter, $courseFilter, $strandFilter) {
+                $query->whereHas('user', function ($q) use ($academicLevelFilter, $courseFilter, $strandFilter) {
                     if ($academicLevelFilter !== '') {
                         $q->where('academic_level', $academicLevelFilter);
                     }
                     if ($courseFilter !== '') {
                         $q->where('course', $courseFilter);
+                    }
+                    if ($strandFilter !== '') {
+                        $q->where('strand', $strandFilter);
                     }
                 });
             });
@@ -533,16 +566,16 @@ class AdminController extends Controller
         $overallAverage = $allFiltered->count() ? round($allFiltered->avg('grade_percent'), 1) : 0;
         $passingRate = $allFiltered->count() ? round(($allFiltered->where('grade_percent', '>=', 75)->count() / $allFiltered->count()) * 100) : 0;
         $studentsGraded = $allFiltered->pluck('user_id')->unique()->count();
-        $coursesMonitored = $allFiltered->pluck('module_code')->unique()->count();
+        $strandsMonitored = $allFiltered->pluck('user.strand')->filter()->unique()->count();
 
         $overview = [
             ['label' => 'Overall Average', 'value' => $overallAverage.'%', 'color' => 'emerald'],
             ['label' => 'Passing Rate', 'value' => $passingRate.'%', 'color' => 'sky'],
             ['label' => 'Students Graded', 'value' => (string) $studentsGraded, 'color' => 'slate'],
-            ['label' => 'Courses Monitored', 'value' => (string) $coursesMonitored, 'color' => 'slate'],
+            ['label' => 'Strands Monitored', 'value' => (string) $strandsMonitored, 'color' => 'slate'],
         ];
 
-        return view('admin.grades', compact('courses', 'allGrades', 'subjectFilter', 'subjectOptions', 'academicLevelFilter', 'courseFilter', 'overview', 'statusFilter'));
+        return view('admin.grades', compact('courses', 'allGrades', 'subjectFilter', 'subjectOptions', 'academicLevelFilter', 'courseFilter', 'strandFilter', 'overview', 'statusFilter'));
     }
 
     public function verifyGrade(StudentModuleRecord $moduleRecord): RedirectResponse
@@ -557,9 +590,10 @@ class AdminController extends Controller
         $subjectFilter = $request->query('subject');
         $academicLevelFilter = $request->query('academic_level');
         $courseFilter = $request->query('course');
+        $strandFilter = $request->query('strand');
 
         $records = StudentModuleRecord::query()
-            ->with(['user:id,name,email,academic_level,course'])
+            ->with(['user:id,name,email,academic_level,course,strand'])
             ->whereNotNull('grade_percent')
             ->when(! $request->has('history'), function ($q) {
                 $settings = new SystemSettingsService();
@@ -569,13 +603,16 @@ class AdminController extends Controller
             ->when($subjectFilter, function ($query, $subjectFilter) {
                 return $query->where('module_code', $subjectFilter);
             })
-            ->when($academicLevelFilter !== '' || $courseFilter !== '', function ($query) use ($academicLevelFilter, $courseFilter) {
-                $query->whereHas('user', function ($q) use ($academicLevelFilter, $courseFilter) {
+            ->when($academicLevelFilter !== '' || $courseFilter !== '' || $strandFilter !== '', function ($query) use ($academicLevelFilter, $courseFilter, $strandFilter) {
+                $query->whereHas('user', function ($q) use ($academicLevelFilter, $courseFilter, $strandFilter) {
                     if ($academicLevelFilter !== null && $academicLevelFilter !== '') {
                         $q->where('academic_level', $academicLevelFilter);
                     }
                     if ($courseFilter !== null && $courseFilter !== '') {
                         $q->where('course', $courseFilter);
+                    }
+                    if ($strandFilter !== null && $strandFilter !== '') {
+                        $q->where('strand', $strandFilter);
                     }
                 });
             })
@@ -593,41 +630,28 @@ class AdminController extends Controller
             }
 
             fwrite($output, "\xEF\xBB\xBF");
-            fputcsv($output, ['Student Name', 'Student Email', 'Module Name', 'Module Code', 'Instructor', 'Schedule', 'Grade Percent']);
+            fputcsv($output, ['Student Name', 'Student Email', 'Course/Strand', 'Level', 'Module Name', 'Module Code', 'Instructor', 'Grade (%)', 'GPA Equivalent']);
+
+            $gradingService = new \App\Services\GradingService();
 
             foreach ($records as $record) {
                 $raw = (float) $record->grade_percent;
-                $gpa = 'Dropped';
-                if ($raw >= 99) {
-                    $gpa = '1.00';
-                } elseif ($raw >= 96) {
-                    $gpa = '1.25';
-                } elseif ($raw >= 93) {
-                    $gpa = '1.50';
-                } elseif ($raw >= 90) {
-                    $gpa = '1.75';
-                } elseif ($raw >= 87) {
-                    $gpa = '2.00';
-                } elseif ($raw >= 84) {
-                    $gpa = '2.25';
-                } elseif ($raw >= 81) {
-                    $gpa = '2.50';
-                } elseif ($raw >= 78) {
-                    $gpa = '2.75';
-                } elseif ($raw >= 75) {
-                    $gpa = '3.00';
-                } elseif ($raw >= 51) {
-                    $gpa = '5.00';
-                }
+                $gpa = $gradingService->toGpa($raw) ?? 'N/A';
+
+                $courseStrand = str_contains($record->user?->academic_level ?? '', 'Senior High School')
+                    ? ($record->user?->strand ?? 'N/A')
+                    : ($record->user?->course ?? 'N/A');
 
                 fputcsv($output, [
                     $record->user?->name ?? 'Unknown Student',
                     $record->user?->email ?? '',
+                    $courseStrand,
+                    $record->user?->academic_level ?? '',
                     $record->module_name,
                     $record->module_code,
                     $record->instructor ?? '',
-                    $record->schedule ?? '',
                     number_format($raw, 2),
+                    $gpa,
                 ]);
             }
 
@@ -970,57 +994,60 @@ class AdminController extends Controller
 
     public function auditTrail(Request $request): View
     {
-        $actions = [
-            ['time' => 'Apr 21, 2026 10:42 AM', 'user' => 'Admin User',         'role' => 'admin',   'action' => 'Login',    'module' => 'Auth',         'ip' => '192.168.1.5',   'detail' => 'Logged in successfully'],
-            ['time' => 'Apr 21, 2026 10:45 AM', 'user' => 'Admin User',         'role' => 'admin',   'action' => 'Update',   'module' => 'Enrollments',  'ip' => '192.168.1.5',   'detail' => 'Approved enrollment for Ana Reyes — MATH301'],
-            ['time' => 'Apr 21, 2026 10:48 AM', 'user' => 'Admin User',         'role' => 'admin',   'action' => 'Create',   'module' => 'Announcements', 'ip' => '192.168.1.5',   'detail' => 'Posted new announcement: "Mid-term Schedule"'],
-            ['time' => 'Apr 21, 2026 11:00 AM', 'user' => 'Dr. Maria Fernandez', 'role' => 'faculty', 'action' => 'Login',    'module' => 'Auth',         'ip' => '192.168.1.12',  'detail' => 'Logged in successfully'],
-            ['time' => 'Apr 21, 2026 11:03 AM', 'user' => 'Dr. Maria Fernandez', 'role' => 'faculty', 'action' => 'Create',   'module' => 'Classrooms',   'ip' => '192.168.1.12',  'detail' => 'Created classroom: Advanced Mathematics (MATH301)'],
-            ['time' => 'Apr 21, 2026 11:15 AM', 'user' => 'Dr. Maria Fernandez', 'role' => 'faculty', 'action' => 'Create',   'module' => 'Attendance',   'ip' => '192.168.1.12',  'detail' => 'Marked attendance for 28 students — MATH301'],
-            ['time' => 'Apr 21, 2026 11:30 AM', 'user' => 'Ana Reyes',          'role' => 'student', 'action' => 'Login',    'module' => 'Auth',         'ip' => '192.168.1.22',  'detail' => 'Logged in successfully'],
-            ['time' => 'Apr 21, 2026 11:32 AM', 'user' => 'Ana Reyes',          'role' => 'student', 'action' => 'Create',   'module' => 'Enrollment',   'ip' => '192.168.1.22',  'detail' => 'Enrolled in Physics I (PHY201)'],
-            ['time' => 'Apr 21, 2026 11:45 AM', 'user' => 'Ana Reyes',          'role' => 'student', 'action' => 'Create',   'module' => 'Documents',    'ip' => '192.168.1.22',  'detail' => 'Submitted document request: Transcript'],
-            ['time' => 'Apr 21, 2026 12:00 PM', 'user' => 'Admin User',         'role' => 'admin',   'action' => 'Update',   'module' => 'Documents',    'ip' => '192.168.1.5',   'detail' => 'Updated request status to Processing'],
-            ['time' => 'Apr 21, 2026 12:10 PM', 'user' => 'Miguel Santos',      'role' => 'student', 'action' => 'Login',    'module' => 'Auth',         'ip' => '192.168.1.31',  'detail' => 'Logged in successfully'],
-            ['time' => 'Apr 21, 2026 12:12 PM', 'user' => 'Miguel Santos',      'role' => 'student', 'action' => 'Create',   'module' => 'Forum',        'ip' => '192.168.1.31',  'detail' => 'Posted new thread: "Physics Exam Tips"'],
-            ['time' => 'Apr 21, 2026 12:30 PM', 'user' => 'Mr. Paulo Navarro',  'role' => 'faculty', 'action' => 'Update',   'module' => 'Grades',       'ip' => '192.168.1.14',  'detail' => 'Encoded grades for Miguel Santos — PHY201'],
-            ['time' => 'Apr 21, 2026 01:00 PM', 'user' => 'Admin User',         'role' => 'admin',   'action' => 'Delete',   'module' => 'Forum',        'ip' => '192.168.1.5',   'detail' => 'Removed flagged forum post #42'],
-            ['time' => 'Apr 21, 2026 01:15 PM', 'user' => 'Sofia Cruz',         'role' => 'student', 'action' => 'Logout',   'module' => 'Auth',         'ip' => '192.168.1.28',  'detail' => 'Logged out'],
-            ['time' => 'Apr 21, 2026 01:30 PM', 'user' => 'Dr. Maria Fernandez', 'role' => 'faculty', 'action' => 'Update',   'module' => 'Classrooms',   'ip' => '192.168.1.12',  'detail' => 'Updated classroom status to inactive'],
-            ['time' => 'Apr 21, 2026 01:45 PM', 'user' => 'Admin User',         'role' => 'admin',   'action' => 'Update',   'module' => 'Enrollments',  'ip' => '192.168.1.5',   'detail' => 'Assigned Section A to Sofia Cruz — HIST201'],
-            ['time' => 'Apr 21, 2026 02:00 PM', 'user' => 'Admin User',         'role' => 'admin',   'action' => 'Logout',   'module' => 'Auth',         'ip' => '192.168.1.5',   'detail' => 'Logged out'],
-        ];
-
         $userFilter = trim((string) $request->query('user', ''));
         $roleFilter = trim((string) $request->query('role', ''));
         $actionFilter = trim((string) $request->query('action', ''));
         $dateFilter = trim((string) $request->query('date', ''));
 
-        if ($userFilter !== '') {
-            $actions = array_filter($actions, fn (array $a): bool => str_contains(strtolower($a['user']), strtolower($userFilter)));
-        }
-        if ($roleFilter !== '') {
-            $actions = array_filter($actions, fn (array $a): bool => $a['role'] === $roleFilter);
-        }
-        if ($actionFilter !== '') {
-            $actions = array_filter($actions, fn (array $a): bool => $a['action'] === $actionFilter);
-        }
+        $query = AuditTrail::with('user')
+            ->when($userFilter !== '', function ($q) use ($userFilter) {
+                $q->whereHas('user', function ($q2) use ($userFilter) {
+                    $q2->where('name', 'like', "%{$userFilter}%");
+                });
+            })
+            ->when($roleFilter !== '', function ($q) use ($roleFilter) {
+                $q->whereHas('user', function ($q2) use ($roleFilter) {
+                    $q2->where('role', $roleFilter);
+                });
+            })
+            ->when($actionFilter !== '', function ($q) use ($actionFilter) {
+                $q->where('action', $actionFilter);
+            })
+            ->when($dateFilter !== '', function ($q) use ($dateFilter) {
+                $q->whereDate('timestamp', $dateFilter);
+            })
+            ->orderByDesc('timestamp')
+            ->paginate(50)
+            ->withQueryString();
+
+        $actions = collect($query->items())->map(function (AuditTrail $at) {
+            return [
+                'time' => $at->timestamp ? Carbon::parse($at->timestamp)->format('M j, Y h:i A') : 'N/A',
+                'user' => $at->user->name ?? 'System',
+                'role' => $at->user->role ?? 'N/A',
+                'action' => $at->action,
+                'module' => $at->module,
+                'ip' => $at->ip_address,
+                'detail' => $at->detail,
+            ];
+        })->all();
 
         $stats = [
-            ['label' => 'Total Actions', 'value' => count($actions)],
-            ['label' => 'Logins',        'value' => count(array_filter($actions, fn ($a) => $a['action'] === 'Login'))],
-            ['label' => 'Creates',       'value' => count(array_filter($actions, fn ($a) => $a['action'] === 'Create'))],
-            ['label' => 'Updates',       'value' => count(array_filter($actions, fn ($a) => $a['action'] === 'Update'))],
-            ['label' => 'Deletes',       'value' => count(array_filter($actions, fn ($a) => $a['action'] === 'Delete'))],
+            ['label' => 'Total Actions', 'value' => AuditTrail::count()],
+            ['label' => 'Logins',        'value' => AuditTrail::where('action', 'Login')->count()],
+            ['label' => 'Creates',       'value' => AuditTrail::where('action', 'Create')->count()],
+            ['label' => 'Updates',       'value' => AuditTrail::where('action', 'Update')->count()],
+            ['label' => 'Deletes',       'value' => AuditTrail::where('action', 'Delete')->count()],
         ];
 
         return view('admin.audit-trail', [
-            'actions' => array_values($actions),
+            'actions' => $actions,
             'stats' => $stats,
             'userFilter' => $userFilter,
             'roleFilter' => $roleFilter,
             'actionFilter' => $actionFilter,
             'dateFilter' => $dateFilter,
+            'pagination' => $query,
         ]);
     }
 
@@ -1119,7 +1146,7 @@ class AdminController extends Controller
             if ($admin->profile_photo && Storage::disk('public')->exists($admin->profile_photo)) {
                 Storage::disk('public')->delete($admin->profile_photo);
             }
-            $validated['profile_photo'] = $request->file('profile_photo')->store('admin-photos', 'public');
+            $validated['profile_photo'] = $request->file('profile_photo')->store('profile-photos', 'public');
         } else {
             unset($validated['profile_photo']);
         }
@@ -1127,6 +1154,28 @@ class AdminController extends Controller
         $admin->update($validated);
 
         return back()->with('status', 'Profile updated successfully.');
+    }
+
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = Auth::user();
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return back()->withErrors(['current_password' => 'The provided password does not match our records.']);
+        }
+
+        $user->update([
+            'password' => Hash::make($request->password)
+        ]);
+
+        AuditTrail::log('Update', 'Settings', 'Admin updated their own password');
+
+        return back()->with('status', 'Password updated successfully.');
     }
 
     public function facultyDirectory(Request $request): View

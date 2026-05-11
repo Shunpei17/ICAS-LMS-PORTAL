@@ -12,6 +12,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Throwable;
+use App\Models\AuditTrail;
 
 class AnnouncementController extends Controller
 {
@@ -130,6 +131,8 @@ class AnnouncementController extends Controller
             ], 201);
         }
 
+        AuditTrail::log('Create', 'Announcements', 'Admin created announcement: ' . $announcement->title);
+
         return redirect()
             ->route('admin.announcements.index')
             ->with('status', 'Announcement created successfully.');
@@ -174,6 +177,8 @@ class AnnouncementController extends Controller
             ]);
         }
 
+        AuditTrail::log('Update', 'Announcements', 'Admin updated announcement: ' . $announcement->title);
+
         return redirect()
             ->route('admin.announcements.index')
             ->with('status', 'Announcement updated successfully.');
@@ -198,6 +203,8 @@ class AnnouncementController extends Controller
                 'message' => 'Announcement deleted successfully.',
             ]);
         }
+
+        AuditTrail::log('Delete', 'Announcements', 'Admin deleted announcement: ' . $announcement->title);
 
         return redirect()
             ->route('admin.announcements.index')

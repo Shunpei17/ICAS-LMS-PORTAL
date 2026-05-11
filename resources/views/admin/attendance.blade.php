@@ -5,7 +5,7 @@
 
 @section('content')
     <div class="space-y-6">
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             @foreach($summary as $item)
                 <div class="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
                     <p class="text-xs uppercase tracking-[0.2em] font-semibold text-slate-500">{{ $item['label'] }}</p>
@@ -85,13 +85,12 @@
                     <div class="relative inline-block text-left">
                         <button id="attendance-export-toggle" type="button" class="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition">Export ▾</button>
                         <div id="attendance-export-menu" class="hidden absolute right-0 mt-2 w-40 rounded-xl bg-white border border-slate-100 shadow-lg z-50">
-                            <a href="{{ route('admin.attendance.export') }}?format=csv" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download CSV</a>
-                            <a href="{{ route('admin.attendance.export') }}?format=xlsx" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download Excel</a>
-                            <a href="{{ route('admin.attendance.export') }}?format=pdf" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download PDF</a>
+                            <a href="{{ route('admin.attendance.export', array_merge(request()->query(), ['format' => 'csv'])) }}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download CSV</a>
+                            <a href="{{ route('admin.attendance.export', array_merge(request()->query(), ['format' => 'xlsx'])) }}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download Excel</a>
+                            <a href="{{ route('admin.attendance.export', array_merge(request()->query(), ['format' => 'pdf'])) }}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Download PDF</a>
                         </div>
                     </div>
                 </div>
-                </form>
             </div>
 
             <div class="mt-6 overflow-x-auto">

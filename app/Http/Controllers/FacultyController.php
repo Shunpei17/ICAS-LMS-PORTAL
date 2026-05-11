@@ -397,19 +397,16 @@ class FacultyController extends Controller
             $this->authorize('manage', $classroom);
         }
 
-        // Prevent duplicate attendance records for same student/date/faculty/subject
+        // Prevent duplicate attendance records for same student/date/faculty/subject/session
         $existingQuery = FacultyAttendanceRecord::query()
             ->whereDate('attendance_date', $data['attendance_date'])
-            ->where('faculty_user_id', Auth::id());
-
-        if (! empty($data['subject_code'])) {
-            $existingQuery->where('subject_code', $data['subject_code']);
-        }
+            ->where('faculty_user_id', Auth::id())
+            ->where('subject_code', $data['subject_code'] ?? '')
+            ->where('student_class', $data['student_class'] ?? '');
 
         if (! empty($data['student_user_id'])) {
             $existingQuery->where('student_user_id', $data['student_user_id']);
         } else {
-            // fallback to name-based matching when user id is not provided
             $existingQuery->where('student_name', $data['student_name']);
         }
 

@@ -23,7 +23,7 @@
                 {{-- Avatar --}}
                 <div class="relative group">
                     @if($admin->profile_photo)
-                        <img src="{{ asset('storage/' . $admin->profile_photo) }}" alt="Profile Photo" class="h-24 w-24 rounded-3xl object-cover border-4 border-white/30 shadow-lg">
+                        <img src="{{ Storage::url($admin->profile_photo) }}" alt="Profile Photo" class="h-24 w-24 rounded-3xl object-cover border-4 border-white/30 shadow-lg">
                     @else
                         @php
                             $initials = collect(explode(' ', trim($admin->name)))->map(fn($s) => strtoupper(substr($s, 0, 1)))->join('');
@@ -196,7 +196,7 @@
                             </div>
                             <div class="flex items-center gap-2 flex-shrink-0">
                                 @if($announcement->attachment_path)
-                                    <a href="{{ asset('storage/' . $announcement->attachment_path) }}" target="_blank" class="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-sky-200 bg-sky-50 text-sky-600 hover:bg-sky-100 transition" title="View Attachment">
+                                    <a href="{{ Storage::url($announcement->attachment_path) }}" target="_blank" class="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-sky-200 bg-sky-50 text-sky-600 hover:bg-sky-100 transition" title="View Attachment">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg>
                                     </a>
                                 @endif

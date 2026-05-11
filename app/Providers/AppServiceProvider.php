@@ -23,8 +23,18 @@ class AppServiceProvider extends ServiceProvider
             URL::forceScheme('https');
         }
 
+        // Global Timezone Setting
+        if (Schema::hasTable('system_settings')) {
+            $settings = new \App\Services\SystemSettingsService();
+            $tz = $settings->get('timezone');
+            if ($tz) {
+                config(['app.timezone' => $tz]);
+                date_default_timezone_set($tz);
+            }
+        }
+
         // View composer for all portals
-        View::composer(['layouts.admin', 'layouts.faculty', 'layouts.student'], function ($view): void {
+        View::composer(['layouts.*', 'admin.*', 'faculty.*', 'student.*'], function ($view): void {
             $settings = new \App\Services\SystemSettingsService();
             $activeAY = $settings->get('academic_year', '2024–2025');
             $activeSem = $settings->get('current_semester', 'Second Semester');

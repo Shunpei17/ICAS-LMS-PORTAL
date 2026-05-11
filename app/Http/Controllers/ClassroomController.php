@@ -9,6 +9,7 @@ use App\Models\StudentModuleRecord;
 use App\Models\User;
 use App\Services\AcademicTermService;
 use App\Services\GradingService;
+use App\Models\AuditTrail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -326,10 +327,6 @@ class ClassroomController extends Controller
         $classrooms = Classroom::query()
             ->with('faculty:id,name')
             ->withCount('students')
-            ->when(! $request->has('history'), function ($q) use ($settings) {
-                $q->where('academic_year', $settings->get('academic_year'))
-                  ->where('semester', $settings->get('current_semester'));
-            })
             ->when($statusFilter !== '', fn ($q) => $q->where('status', $statusFilter))
             ->when($search !== '', fn ($q) => $q->where(function ($q) use ($search): void {
                 $q->where('name', 'like', '%'.$search.'%')
@@ -407,6 +404,8 @@ class ClassroomController extends Controller
 
         $classroom = Classroom::create($validated);
 
+        AuditTrail::log('Create', 'Classrooms', 'Admin created classroom: ' . $classroom->name . ' (' . $classroom->code . ')');
+
         return redirect()
             ->route('admin.classrooms')
             ->with('status', 'Classroom "'.$validated['name'].'" created successfully.');
@@ -438,12 +437,28 @@ class ClassroomController extends Controller
     /**
      * Toggle classroom status (active/inactive) for admin.
      */
-    public function adminToggleStatus(Request $request, Classroom $classroom)
+    public function adminToggleStatus(Request $request, Classroom $classroom): RedirectResponse
     {
         $classroom->status = $classroom->status === 'active' ? 'inactive' : 'active';
         $classroom->save();
 
-        return response()->json(['status' => $classroom->status]);
+        AuditTrail::log('Update', 'Classrooms', 'Admin updated status of ' . $classroom->name . ' to ' . $classroom->status);
+
+        return back()->with('status', 'Classroom "'.$classroom->name.'" is now '.ucfirst($classroom->status).'.');
+    }
+
+    /**
+     * Delete classroom for admin.
+     */
+    public function adminDestroy(Classroom $classroom): RedirectResponse
+    {
+        $name = $classroom->name;
+        $code = $classroom->code;
+        $classroom->delete();
+
+        AuditTrail::log('Delete', 'Classrooms', 'Admin permanently deleted classroom: ' . $name . ' (' . $code . ')');
+
+        return redirect()->route('admin.classrooms')->with('status', 'Classroom "'.$name.'" has been permanently deleted.');
     }
 
     /**

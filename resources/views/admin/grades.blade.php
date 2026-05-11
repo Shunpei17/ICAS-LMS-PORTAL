@@ -34,6 +34,11 @@
                         <option value="BSIT" @selected($courseFilter === 'BSIT')>BSIT</option>
                         <option value="BSHM" @selected($courseFilter === 'BSHM')>BSHM</option>
                     </select>
+                    <select name="strand" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white" onchange="this.form.submit()">
+                        <option value="">All Strands</option>
+                        <option value="ICT" @selected(($strandFilter ?? '') === 'ICT')>ICT</option>
+                        <option value="HE" @selected(($strandFilter ?? '') === 'HE')>HE</option>
+                    </select>
                     <select name="subject" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white" onchange="this.form.submit()">
                         <option value="">All Subjects</option>
                         @foreach($subjectOptions as $option)
@@ -46,6 +51,7 @@
                 <form action="{{ route('admin.grades.export') }}" method="GET" class="flex items-center gap-2">
                     <input type="hidden" name="academic_level" value="{{ $academicLevelFilter }}">
                     <input type="hidden" name="course" value="{{ $courseFilter }}">
+                    <input type="hidden" name="strand" value="{{ $strandFilter ?? '' }}">
                     <input type="hidden" name="subject" value="{{ $subjectFilter }}">
                     <select name="format" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white">
                         <option value="csv">Excel / CSV</option>
@@ -146,7 +152,7 @@
                 <thead class="bg-slate-50 border-b border-slate-200">
                     <tr>
                         <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Student Name</th>
-                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Course</th>
+                        <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Course / Strand</th>
                         <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Level</th>
                         <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Subject</th>
                         <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Grade</th>
@@ -158,7 +164,13 @@
                     @forelse($allGrades as $grade)
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="px-5 py-3.5 font-semibold text-slate-900">{{ $grade->user->name ?? 'Unknown' }}</td>
-                        <td class="px-5 py-3.5 text-slate-400">{{ $grade->user->course ?? 'N/A' }}</td>
+                        <td class="px-5 py-3.5 text-slate-400">
+                            @if(str_contains($grade->user->academic_level ?? '', 'Senior High School'))
+                                {{ $grade->user->strand ?? 'N/A' }}
+                            @else
+                                {{ $grade->user->course ?? 'N/A' }}
+                            @endif
+                        </td>
                         <td class="px-5 py-3.5 text-slate-400">{{ $grade->user->academic_level ?? 'N/A' }}</td>
                         <td class="px-5 py-3.5 text-slate-700">{{ $grade->module_name }} <span class="text-xs text-slate-400">({{ $grade->module_code }})</span></td>
                         <td class="px-5 py-3.5"><span class="font-bold text-slate-900">{{ $grade->grade_percent }}%</span></td>

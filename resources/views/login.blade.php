@@ -436,11 +436,25 @@
 
                 @if($errors->any())
                     <div class="mt-6 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                        <ul class="list-disc pl-4">
+                        <ul class="list-disc pl-4" id="error-list">
                             @foreach ($errors->all() as $error)
                                 <li>{{ $error }}</li>
                             @endforeach
                         </ul>
+
+                        @if(session('lockout_seconds'))
+                            <div class="mt-3 border-t border-rose-200 pt-3">
+                                <div class="flex items-center gap-3">
+                                    <div class="flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-[11px] font-bold uppercase tracking-wider text-rose-600/80">Unlocking In</p>
+                                        <p id="lockout-timer" class="display-font text-lg font-bold leading-none mt-0.5">--:--</p>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
                     </div>
                 @endif
 
@@ -605,6 +619,41 @@
             }
 
             setRole(@json(old('role', 'student')));
+
+            // Lockout Countdown Timer
+            (function initLockoutTimer() {
+                let seconds = @json(session('lockout_seconds', 0));
+                if (seconds <= 0) return;
+
+                const timerEl = document.getElementById('lockout-timer');
+                const loginForm = document.getElementById('loginForm');
+                const submitBtn = loginForm?.querySelector('button[type="submit"]');
+
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                }
+
+                function updateTimer() {
+                    if (seconds <= 0) {
+                        if (timerEl) timerEl.innerText = "Unlocked";
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                        }
+                        return;
+                    }
+
+                    const m = Math.floor(seconds / 60);
+                    const s = seconds % 60;
+                    if (timerEl) timerEl.innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+                    
+                    seconds--;
+                    setTimeout(updateTimer, 1000);
+                }
+
+                updateTimer();
+            })();
 
             document.querySelectorAll('a[data-page-transition]').forEach(function (link) {
                 link.addEventListener('click', function (event) {

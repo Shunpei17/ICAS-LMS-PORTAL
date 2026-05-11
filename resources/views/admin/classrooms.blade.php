@@ -37,12 +37,8 @@
                         <option value="active"   {{ $statusFilter === 'active'   ? 'selected' : '' }}>Active</option>
                         <option value="inactive" {{ $statusFilter === 'inactive' ? 'selected' : '' }}>Inactive</option>
                     </select>
-                    <label class="flex items-center gap-2 text-sm text-slate-600 cursor-pointer mr-2">
-                        <input type="checkbox" name="history" value="1" {{ request()->has('history') ? 'checked' : '' }} class="rounded border-slate-300 text-green-600 focus:ring-green-500">
-                        View History
-                    </label>
                     <button type="submit" class="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 transition">Filter</button>
-                    @if($search || $statusFilter || request()->has('history'))
+                    @if($search || $statusFilter)
                         <a href="{{ route('admin.classrooms') }}" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">Clear</a>
                     @endif
                     <a href="{{ route('admin.classrooms.create') }}" class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition flex items-center gap-2">
@@ -106,11 +102,18 @@
                                     </td>
                                     <td class="px-5 py-4 text-center">
                                         <div class="flex items-center justify-center gap-2">
-                                            <button data-id="{{ $room['id'] }}" data-status="{{ $room['status'] }}" class="toggle-status rounded-md bg-slate-100 px-3 py-1 text-xs">Toggle</button>
-                                            <button data-id="{{ $room['id'] }}" data-name="{{ $room['name'] }}" class="assign-faculty rounded-md bg-sky-600 text-white px-3 py-1 text-xs">Assign</button>
+                                            <form action="{{ route('admin.classrooms.status', $room['id']) }}" method="POST">
+                                                @csrf
+                                                @method('PATCH')
+                                                <button type="submit" class="rounded-md px-3 py-1 text-xs font-semibold transition
+                                                    {{ $room['status'] === 'active' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' }}">
+                                                    {{ $room['status'] === 'active' ? 'Deactivate' : 'Activate' }}
+                                                </button>
+                                            </form>
+                                            <button data-id="{{ $room['id'] }}" data-name="{{ $room['name'] }}" class="assign-faculty rounded-md bg-sky-600 text-white px-3 py-1 text-xs font-semibold hover:bg-sky-700 transition">Assign</button>
                                             <div class="relative inline-block text-left">
-                                                <button type="button" class="export-btn rounded-md bg-emerald-600 text-white px-3 py-1 text-xs">Export ▾</button>
-                                                <div class="export-menu hidden absolute right-0 mt-2 w-36 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+                                                <button type="button" class="export-btn rounded-md bg-slate-800 text-white px-3 py-1 text-xs font-semibold hover:bg-slate-900 transition">Export ▾</button>
+                                                <div class="export-menu hidden absolute right-0 mt-2 z-10 w-36 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
                                                     <div class="py-1">
                                                         <a href="{{ route('admin.classrooms.export', $room['id']) }}?format=csv" class="block px-3 py-2 text-xs text-slate-700 hover:bg-slate-50">CSV</a>
                                                         <a href="{{ route('admin.classrooms.export', $room['id']) }}?format=xlsx" class="block px-3 py-2 text-xs text-slate-700 hover:bg-slate-50">Excel</a>
@@ -118,6 +121,13 @@
                                                     </div>
                                                 </div>
                                             </div>
+                                            <form action="{{ route('admin.classrooms.destroy', $room['id']) }}" method="POST" onsubmit="return confirm('Are you sure you want to permanently delete this classroom? This action cannot be undone.')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="rounded-md bg-rose-50 p-1.5 text-rose-600 hover:bg-rose-100 transition" title="Delete Classroom">
+                                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                                </button>
+                                            </form>
                                         </div>
                                     </td>
                                 </tr>
@@ -162,15 +172,7 @@
             (function () {
                 const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
-                // Toggle status
-                document.querySelectorAll('.toggle-status').forEach(btn => {
-                    btn.addEventListener('click', async () => {
-                        const id = btn.getAttribute('data-id');
-                        const url = '/admin/classrooms/' + id + '/status';
-                        const res = await fetch(url, { method: 'PATCH', headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' } });
-                        if (res.ok) { location.reload(); }
-                    });
-                });
+
 
                 // Assign faculty modal
                 const modal = document.getElementById('assignModal');

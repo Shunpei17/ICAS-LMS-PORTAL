@@ -4,7 +4,7 @@
 @section('content')
 <div class="space-y-6" x-data="{ tab: 'general' }">
     <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-2 flex gap-2 flex-wrap">
-        @foreach(['general'=>'General','academic'=>'Academic Term','grading'=>'Grading','appearance'=>'Appearance'] as $k=>$l)
+        @foreach(['general'=>'General','academic'=>'Academic Term','grading'=>'Grading','appearance'=>'Appearance','password'=>'Password'] as $k=>$l)
             <button @click="tab='{{ $k }}'" :class="tab==='{{ $k }}'?'bg-green-600 text-white shadow-sm':'text-slate-600 hover:bg-slate-100'" class="rounded-2xl px-5 py-2.5 text-sm font-semibold transition">{{ $l }}</button>
         @endforeach
     </section>
@@ -13,25 +13,28 @@
     <div x-show="tab==='general'" x-cloak>
         <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-6">
             <h3 class="text-lg font-bold text-slate-900 mb-5">School Information</h3>
-            <form class="space-y-5">
+            <form method="POST" action="{{ route('admin.settings.update') }}" class="space-y-5">
+                @csrf
                 <div class="grid gap-5 sm:grid-cols-2">
                     <div class="sm:col-span-2">
                         <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">School / Institution Name</label>
-                        <input type="text" value="{{ $schoolSettings['school_name'] }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">School Code</label>
-                        <input type="text" value="{{ $schoolSettings['school_code'] }}" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                        <div class="w-full rounded-2xl border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-600 font-bold">
+                            INFOTECH COLLEGE OF ARTS AND SCIENCES - MARCOS HIGHWAY
+                        </div>
+                        <p class="mt-1.5 text-xs text-slate-400 italic">This is a static value and cannot be changed.</p>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Timezone</label>
-                        <select class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
-                            <option selected>Asia/Manila (UTC+8)</option>
-                            <option>UTC</option>
+                        <select name="timezone" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                            <option value="Asia/Manila" @selected($schoolSettings['timezone']==='Asia/Manila')>Asia/Manila (UTC+8)</option>
+                            <option value="UTC" @selected($schoolSettings['timezone']==='UTC')>UTC (Universal Coordinated Time)</option>
+                            <option value="Asia/Singapore" @selected($schoolSettings['timezone']==='Asia/Singapore')>Asia/Singapore (UTC+8)</option>
+                            <option value="Asia/Hong_Kong" @selected($schoolSettings['timezone']==='Asia/Hong_Kong')>Asia/Hong_Kong (UTC+8)</option>
+                            <option value="Asia/Tokyo" @selected($schoolSettings['timezone']==='Asia/Tokyo')>Asia/Tokyo (UTC+9)</option>
                         </select>
                     </div>
                 </div>
-                <button class="rounded-2xl bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700 transition">Save Changes</button>
+                <button type="submit" class="rounded-2xl bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700 transition shadow-lg shadow-green-200/50">Save General Settings</button>
             </form>
         </section>
     </div>
@@ -207,6 +210,46 @@
                 </div>
                 <div class="mt-5">
                     <button type="submit" class="rounded-2xl bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700 transition">Save Appearance</button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    {{-- Password Management --}}
+    <div x-show="tab==='password'" x-cloak>
+        <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-6">
+            <h3 class="text-lg font-bold text-slate-900 mb-1">Password Management</h3>
+            <p class="text-sm text-slate-500 mb-6">Update your administrator credentials. A secure password is required to maintain system integrity.</p>
+
+            <form method="POST" action="{{ route('admin.settings.password.update') }}" class="max-w-xl space-y-5">
+                @csrf
+                @method('PATCH')
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Current Password</label>
+                    <input name="current_password" type="password" required
+                           class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                    <p class="mt-1 text-xs text-slate-400">You must provide your existing password to authorize this change.</p>
+                </div>
+
+                <div class="pt-2 border-t border-slate-100">
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">New Password</label>
+                    <input name="password" type="password" required
+                           class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Confirm New Password</label>
+                    <input name="password_confirmation" type="password" required
+                           class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                </div>
+
+                <div class="pt-4 flex items-center gap-4">
+                    <button type="submit" class="rounded-2xl bg-green-600 px-8 py-3 text-sm font-semibold text-white hover:bg-green-700 transition shadow-lg shadow-green-200/50">Update Password</button>
+                    <div class="text-xs text-slate-400 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        SSL Secured Encryption
+                    </div>
                 </div>
             </form>
         </section>

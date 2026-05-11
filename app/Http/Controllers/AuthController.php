@@ -9,9 +9,11 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password as PasswordRule;
 use Illuminate\View\View;
+use App\Models\AuditTrail;
 
 class AuthController extends Controller
 {
@@ -97,24 +99,40 @@ class AuthController extends Controller
      */
     public function register(Request $request): RedirectResponse
     {
-        $data = $request->validate([
+        $role = $request->input('role');
+        $academicLevel = $request->input('academic_level');
+
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role' => ['required', 'in:student,faculty'],
-            'enrollment_type' => ['nullable', 'string', 'in:New Student,Old Student', 'required_if:role,student'],
-            'academic_level' => ['nullable', 'string', 'required_if:role,student'],
-            'course' => ['nullable', 'string', 'required_if:role,student'],
-        ]);
+        ];
+
+        if ($role === 'student') {
+            $rules['enrollment_type'] = ['required', 'in:New Student,Old Student'];
+            $rules['academic_level'] = ['required', 'string'];
+
+            if ($academicLevel === 'Senior High School') {
+                $rules['strand'] = ['required', 'in:ICT,HE'];
+            } else {
+                $rules['course'] = ['required', 'in:BSIT,BSHM'];
+            }
+        }
+
+        $data = $request->validate($rules);
 
         User::create([
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => Hash::make($data['password']),
             'role' => $data['role'],
-            'enrollment_type' => $data['enrollment_type'] ?? null,
-            'academic_level' => $data['academic_level'] ?? null,
-            'course' => $data['course'] ?? null,
+            'enrollment_type' => $data['role'] === 'student' ? $data['enrollment_type'] : null,
+            'academic_level' => $data['role'] === 'student' ? $data['academic_level'] : null,
+            // Strictly exclusive storage logic
+            'course' => ($data['role'] === 'student' && $data['academic_level'] !== 'Senior High School') ? $data['course'] : null,
+            'strand' => ($data['role'] === 'student' && $data['academic_level'] === 'Senior High School') ? $data['strand'] : null,
+            'account_source' => 'manual_registration',
         ]);
 
         return redirect()->route('login')
@@ -133,7 +151,18 @@ class AuthController extends Controller
             'email' => ['required', 'email'],
             'password' => ['required'],
             'role' => ['required', 'in:student,faculty,admin'],
-        ]);  // Login accepts admin role, but registration does not
+        ]);
+
+        $throttleKey = Str::lower($request->input('email')) . '|' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
+            $seconds = RateLimiter::availableIn($throttleKey);
+            $minutes = ceil($seconds / 60);
+
+            return back()->withErrors([
+                'email' => "Account locked due to too many failed attempts. Please try again in {$minutes} minute(s).",
+            ])->with('lockout_seconds', $seconds)->withInput();
+        }
 
         $selectedRole = $credentials['role'];
         unset($credentials['role']);
@@ -143,6 +172,7 @@ class AuthController extends Controller
 
             if ($user->role !== $selectedRole) {
                 Auth::logout();
+                RateLimiter::hit($throttleKey, 1800); // 30 mins
 
                 return back()->withErrors([
                     'email' => 'This account is a '.ucfirst($user->role).', not a '.ucfirst($selectedRole).'.',
@@ -179,9 +209,12 @@ class AuthController extends Controller
                     ->withInput();
             }
 
+            // Success: clear rate limiter
+            RateLimiter::clear($throttleKey);
             $request->session()->regenerate();
 
-            // Role-based redirect after login
+            AuditTrail::log('Login', 'Auth', 'User logged in as ' . $selectedRole);
+
             return match ($selectedRole) {
                 'admin' => redirect()->intended(route('admin.dashboard')),
                 'faculty' => redirect()->intended(route('faculty.dashboard')),
@@ -190,11 +223,15 @@ class AuthController extends Controller
             };
         }
 
+        // Failure: increment attempts
+        RateLimiter::hit($throttleKey, 1800);
+
         return back()->withErrors(['email' => 'Invalid email or password.'])->withInput();
     }
 
     public function logout(Request $request): RedirectResponse
     {
+        AuditTrail::log('Logout', 'Auth', 'User logged out');
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

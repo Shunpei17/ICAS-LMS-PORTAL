@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Log;
 class StudentBulkImportService
 {
     const STUDENT_DEFAULT_PASSWORD = 'Icas_Students@2026';
+    const FACULTY_DEFAULT_PASSWORD = 'Icas_Faculty@2026';
     const ADMIN_DEFAULT_PASSWORD = 'Icas_admin@2026';
 
     const BATCH_SIZE = 100;
@@ -34,8 +35,9 @@ class StudentBulkImportService
 
         // Read header row
         $header = fgetcsv($stream);
-        
+
         $studentColumns = ['Student Number', 'Full Name', 'Email', 'Academic Level', 'Course', 'Strand'];
+        $facultyColumns = ['Faculty Unique Number', 'Full Name', 'Email', 'Department'];
         $adminColumns = ['Admin unique number', 'Full Name', 'Email', 'Department'];
 
         // Trim headers just in case of BOM or whitespace
@@ -44,12 +46,15 @@ class StudentBulkImportService
         $type = null;
         if ($header === $studentColumns) {
             $type = 'student';
+        } elseif ($header === $facultyColumns) {
+            $type = 'faculty';
         } elseif ($header === $adminColumns) {
             $type = 'admin';
         }
 
-        if (!$type) {
+        if (! $type) {
             fclose($stream);
+
             return [
                 'success' => 0,
                 'failed' => 0,
@@ -76,6 +81,14 @@ class StudentBulkImportService
                     'course' => trim($course),
                     'strand' => trim($strand),
                 ];
+            } elseif ($type === 'faculty') {
+                [$number, $name, $email, $dept] = array_pad($row, 4, '');
+                $validation = $this->validateFaculty($number, $name, $email, $lineNumber);
+                $role = 'faculty';
+                $password = self::FACULTY_DEFAULT_PASSWORD;
+                $extra = [
+                    'department' => trim($dept),
+                ];
             } else {
                 [$number, $name, $email, $dept] = array_pad($row, 4, '');
                 $validation = $this->validateAdmin($number, $name, $email, $lineNumber);
@@ -96,8 +109,8 @@ class StudentBulkImportService
 
             // Check for duplicates
             $existing = User::where('email', $email)
-                ->when($type === 'student', fn($q) => $q->orWhere('student_number', $number))
-                ->when($type === 'admin', fn($q) => $q->orWhere('admin_number', $number))
+                ->when($type === 'student', fn ($q) => $q->orWhere('student_number', $number))
+                ->when($type === 'admin', fn ($q) => $q->orWhere('admin_number', $number))
                 ->exists();
 
             if ($existing) {
@@ -114,7 +127,9 @@ class StudentBulkImportService
                 'role' => $role,
                 'status' => 'active',
                 'is_verified' => true,
-                'needs_password_change' => true,
+                'force_password_change' => true,
+                'account_source' => 'csv_import',
+                'imported_at' => now(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ], $extra);
@@ -150,6 +165,16 @@ class StudentBulkImportService
         
         $validLevels = ['Senior High School', '1st Year College', '2nd Year College', '3rd Year College'];
         if (empty($level) || !in_array($level, $validLevels)) $errs[] = "Line $line: Valid Academic Level is required.";
+
+        return ['valid' => empty($errs), 'errors' => $errs];
+    }
+
+    private function validateFaculty($number, $name, $email, $line): array
+    {
+        $errs = [];
+        if (empty($number)) $errs[] = "Line $line: Faculty Number is required.";
+        if (empty($name)) $errs[] = "Line $line: Full Name is required.";
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) $errs[] = "Line $line: Valid Email is required.";
 
         return ['valid' => empty($errs), 'errors' => $errs];
     }
