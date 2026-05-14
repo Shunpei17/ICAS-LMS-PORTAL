@@ -221,6 +221,13 @@
             <h3 class="text-lg font-bold text-slate-900 mb-1">Password Management</h3>
             <p class="text-sm text-slate-500 mb-6">Update your administrator credentials. A secure password is required to maintain system integrity.</p>
 
+            @if(session('status'))
+                <div class="mb-6 rounded-2xl bg-emerald-50 border border-emerald-100 p-4 flex items-center gap-3 text-emerald-700 text-sm font-medium">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    {{ session('status') }}
+                </div>
+            @endif
+
             <form method="POST" action="{{ route('admin.settings.password.update') }}" class="max-w-xl space-y-5">
                 @csrf
                 @method('PATCH')
@@ -228,14 +235,20 @@
                 <div>
                     <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Current Password</label>
                     <input name="current_password" type="password" required
-                           class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                           class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 @error('current_password') border-rose-500 @enderror">
+                    @error('current_password')
+                        <p class="mt-1 text-xs text-rose-500 font-medium">{{ $message }}</p>
+                    @enderror
                     <p class="mt-1 text-xs text-slate-400">You must provide your existing password to authorize this change.</p>
                 </div>
 
                 <div class="pt-2 border-t border-slate-100">
                     <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">New Password</label>
                     <input name="password" type="password" required
-                           class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400">
+                           class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 @error('password') border-rose-500 @enderror">
+                    @error('password')
+                        <p class="mt-1 text-xs text-rose-500 font-medium">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div>

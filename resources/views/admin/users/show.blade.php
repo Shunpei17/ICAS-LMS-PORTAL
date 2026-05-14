@@ -86,30 +86,24 @@
                 </div>
 
                 {{-- Verification Documents (Only for Manual Students) --}}
-                @if($user->role === 'student' && ($user->receipt_proof || $user->student_id_proof))
+                @if($user->role === 'student' && ($user->receipt_proof_blob || $user->student_id_proof_blob))
                     <div class="space-y-6">
                         <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Verification Documents</h3>
                         
                         <div class="grid gap-4">
-                            @if($user->receipt_proof)
-                                <div class="p-5 rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
-                                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Receipt / Enrollment Proof</p>
-                                    <a href="{{ Storage::url($user->receipt_proof) }}" target="_blank" class="inline-flex items-center gap-2 rounded-xl bg-green-50 px-4 py-2 text-xs font-bold text-green-700 hover:bg-green-100 transition">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                        View Document
-                                    </a>
-                                </div>
-                            @endif
+                                    @if($user->receipt_proof_blob)
+                                        <a href="{{ route('file.show', ['type' => 'receipt_proof', 'id' => $user->id]) }}" target="_blank" class="inline-flex items-center gap-2 rounded-xl bg-green-50 px-4 py-2 text-xs font-bold text-green-700 hover:bg-green-100 transition">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                            View Document
+                                        </a>
+                                    @endif
 
-                            @if($user->student_id_proof)
-                                <div class="p-5 rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
-                                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Student ID Proof</p>
-                                    <a href="{{ Storage::url($user->student_id_proof) }}" target="_blank" class="inline-flex items-center gap-2 rounded-xl bg-sky-50 px-4 py-2 text-xs font-bold text-sky-700 hover:bg-sky-100 transition">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
-                                        View ID Card
-                                    </a>
-                                </div>
-                            @endif
+                                    @if($user->student_id_proof_blob)
+                                        <a href="{{ route('file.show', ['type' => 'student_id_proof', 'id' => $user->id]) }}" target="_blank" class="inline-flex items-center gap-2 rounded-xl bg-sky-50 px-4 py-2 text-xs font-bold text-sky-700 hover:bg-sky-100 transition">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                            View ID Card
+                                        </a>
+                                    @endif
                         </div>
                     </div>
                 @elseif($user->role === 'student')

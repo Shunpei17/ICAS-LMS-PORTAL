@@ -21,7 +21,7 @@
                     <p class="mt-2 text-sm text-slate-500">Track attendance activity and monitor trends by class, date range, and faculty.</p>
                 </div>
 
-                <form method="GET" action="{{ route('admin.attendance') }}" class="grid w-full gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_1fr_1fr_1fr_1fr_auto_auto] xl:items-center">
+                <form method="GET" action="{{ route('admin.attendance') }}" class="grid w-full gap-3 md:grid-cols-2 xl:grid-cols-[1.4fr_1fr_1fr_1fr_1.2fr_1fr_1fr_auto_auto] xl:items-center">
                     <input
                         type="text"
                         name="search"
@@ -63,6 +63,13 @@
                         @endforeach
                     </select>
 
+                    <select name="subject" class="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none">
+                        <option value="" @selected($filters['subject'] === '')>All Subjects</option>
+                        @foreach($subjectOptions as $subjectOpt)
+                            <option value="{{ $subjectOpt }}" @selected($filters['subject'] === $subjectOpt)>{{ $subjectOpt }}</option>
+                        @endforeach
+                    </select>
+
                     <input
                         type="date"
                         name="from_date"
@@ -98,9 +105,10 @@
                     <thead>
                         <tr>
                             <th class="px-4 py-4 font-semibold text-slate-500">Student</th>
-                            <th class="px-4 py-4 font-semibold text-slate-500">Course</th>
+                            <th class="px-4 py-4 font-semibold text-slate-500">Course/Strand</th>
                             <th class="px-4 py-4 font-semibold text-slate-500">Academic Level</th>
                             <th class="px-4 py-4 font-semibold text-slate-500">Faculty</th>
+                            <th class="px-4 py-4 font-semibold text-slate-500">Subject</th>
                             <th class="px-4 py-4 font-semibold text-slate-500">Date</th>
                             <th class="px-4 py-4 font-semibold text-slate-500">Status</th>
                         </tr>
@@ -114,9 +122,13 @@
                                         <span class="font-medium text-slate-900">{{ $record->student_name }}</span>
                                     </div>
                                 </td>
-                                <td class="px-4 py-4">{{ $record->studentUser?->course ?? $record->student_course ?? '-' }}</td>
-                                <td class="px-4 py-4">{{ $record->studentUser?->academic_level ?? $record->student_academic_level ?? '-' }}</td>
-                                <td class="px-4 py-4">{{ $record->faculty?->name ?? 'Unknown Faculty' }}</td>
+                                <td class="px-4 py-4">{{ $record->course_strand ?? $record->studentUser?->course ?? '-' }}</td>
+                                <td class="px-4 py-4">{{ $record->academic_level ?? $record->studentUser?->academic_level ?? '-' }}</td>
+                                <td class="px-4 py-4">
+                                    <div class="text-slate-900 font-medium">{{ $record->faculty?->name ?? 'Unknown' }}</div>
+                                    <div class="text-[10px] text-slate-400 uppercase tracking-wider">Instructor</div>
+                                </td>
+                                <td class="px-4 py-4 font-mono text-xs">{{ $record->subject_code ?? '-' }}</td>
                                 <td class="px-4 py-4">{{ $record->attendance_date?->format('n/j/Y') ?? '-' }}</td>
                                 <td class="px-4 py-4">
                                     <span class="inline-flex rounded-full px-3 py-1 text-xs font-semibold {{ $record->status === 'Present' ? 'bg-emerald-100 text-emerald-700' : ($record->status === 'Late' ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700') }}">{{ $record->status }}</span>
@@ -124,7 +136,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-4 py-8 text-center text-sm text-slate-500">
+                                <td colspan="7" class="px-4 py-8 text-center text-sm text-slate-500">
                                     No attendance records found for the selected filters.
                                 </td>
                             </tr>

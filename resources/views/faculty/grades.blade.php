@@ -98,15 +98,17 @@
                         class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none"
                         required
                     />
-                    <input
-                        type="text"
+                    <select
                         name="student_class"
                         id="student-class-input"
-                        value="{{ old('student_class') }}"
-                        placeholder="Class (e.g. 10th A)"
                         class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 focus:border-slate-900 focus:outline-none"
                         required
-                    />
+                    >
+                        <option value="">Select Subject/Class</option>
+                        @foreach($facultyClassrooms as $classroom)
+                            <option value="{{ $classroom->code }}" @selected(old('student_class') === $classroom->code)>{{ $classroom->name }} ({{ $classroom->code }})</option>
+                        @endforeach
+                    </select>
                     <input
                         type="date"
                         id="attendance-date-input"
@@ -278,9 +280,15 @@
                                 <tr>
                                     <th class="px-4 py-4 font-semibold text-slate-500">Student Name</th>
                                     <th class="px-4 py-4 font-semibold text-slate-500">Subject</th>
-                                    <th class="px-4 py-4 font-semibold text-slate-500">Quiz (30%)</th>
-                                    <th class="px-4 py-4 font-semibold text-slate-500">Assignment (30%)</th>
-                                    <th class="px-4 py-4 font-semibold text-slate-500">Exam (40%)</th>
+                                    @if($activeCriteria->isNotEmpty())
+                                        @foreach($activeCriteria as $criterion)
+                                            <th class="px-4 py-4 font-semibold text-slate-500">{{ $criterion->component_name }} ({{ (float)$criterion->weight }}%)</th>
+                                        @endforeach
+                                    @else
+                                        <th class="px-4 py-4 font-semibold text-slate-500">Quiz (30%)</th>
+                                        <th class="px-4 py-4 font-semibold text-slate-500">Assignment (30%)</th>
+                                        <th class="px-4 py-4 font-semibold text-slate-500">Exam (40%)</th>
+                                    @endif
                                     <th class="px-4 py-4 font-semibold text-slate-500">Average</th>
                                     <th class="px-4 py-4 font-semibold text-slate-500">Remarks</th>
                                 </tr>
@@ -296,15 +304,31 @@
                                             {{ $gradeRecord['subject_id'] }}
                                             <input type="hidden" name="grades[{{ $index }}][subject_id]" value="{{ $gradeRecord['subject_id'] }}">
                                         </td>
-                                        <td class="px-4 py-4">
-                                            <input type="number" step="0.01" min="0" max="100" name="grades[{{ $index }}][quiz]" value="{{ $gradeRecord['quiz'] }}" class="grade-input rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:border-slate-900 focus:outline-none w-24">
-                                        </td>
-                                        <td class="px-4 py-4">
-                                            <input type="number" step="0.01" min="0" max="100" name="grades[{{ $index }}][assignment]" value="{{ $gradeRecord['assignment'] }}" class="grade-input rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:border-slate-900 focus:outline-none w-24">
-                                        </td>
-                                        <td class="px-4 py-4">
-                                            <input type="number" step="0.01" min="0" max="100" name="grades[{{ $index }}][exam]" value="{{ $gradeRecord['exam'] }}" class="grade-input rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:border-slate-900 focus:outline-none w-24">
-                                        </td>
+                                        @if($activeCriteria->isNotEmpty())
+                                            @foreach($activeCriteria as $criterion)
+                                                @php
+                                                    $compKey = strtolower(str_replace(' ', '_', $criterion->component_name));
+                                                    $val = $gradeRecord['component_scores'][$compKey] ?? $gradeRecord[$compKey] ?? 0;
+                                                @endphp
+                                                <td class="px-4 py-4">
+                                                    <input type="number" step="0.01" min="0" max="100" 
+                                                           name="grades[{{ $index }}][components][{{ $compKey }}]" 
+                                                           value="{{ $val }}" 
+                                                           data-weight="{{ $criterion->weight }}"
+                                                           class="grade-input rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:border-slate-900 focus:outline-none w-24">
+                                                </td>
+                                            @endforeach
+                                        @else
+                                            <td class="px-4 py-4">
+                                                <input type="number" step="0.01" min="0" max="100" name="grades[{{ $index }}][quiz]" value="{{ $gradeRecord['quiz'] }}" data-weight="30" class="grade-input rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:border-slate-900 focus:outline-none w-24">
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <input type="number" step="0.01" min="0" max="100" name="grades[{{ $index }}][assignment]" value="{{ $gradeRecord['assignment'] }}" data-weight="30" class="grade-input rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:border-slate-900 focus:outline-none w-24">
+                                            </td>
+                                            <td class="px-4 py-4">
+                                                <input type="number" step="0.01" min="0" max="100" name="grades[{{ $index }}][exam]" value="{{ $gradeRecord['exam'] }}" data-weight="40" class="grade-input rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 focus:border-slate-900 focus:outline-none w-24">
+                                            </td>
+                                        @endif
                                         <td class="px-4 py-4">
                                             <span class="average-display font-semibold">{{ $gradeRecord['average'] ?? '0.00' }}</span>
                                         </td>
@@ -426,10 +450,12 @@
                         const remarksDisplay = row.querySelector('.remarks-display');
                         if (inputs.length === 0) return;
                         const calculate = () => {
-                            const quiz = parseFloat(inputs[0].value) || 0;
-                            const assignment = parseFloat(inputs[1].value) || 0;
-                            const exam = parseFloat(inputs[2].value) || 0;
-                            const average = (quiz * 0.3) + (assignment * 0.3) + (exam * 0.4);
+                            let average = 0;
+                            inputs.forEach(input => {
+                                const val = parseFloat(input.value) || 0;
+                                const weight = parseFloat(input.dataset.weight) || 0;
+                                average += (val * (weight / 100));
+                            });
                             avgDisplay.textContent = average.toFixed(2);
                             if (average >= PASSING_GRADE) {
                                 remarksDisplay.textContent = 'Pass';

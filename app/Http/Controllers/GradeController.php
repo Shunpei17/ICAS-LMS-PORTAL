@@ -20,39 +20,31 @@ class GradeController extends Controller
                 continue;
             }
 
-            $quiz = $data['quiz'] ?? 0;
-            $assignment = $data['assignment'] ?? 0;
-            $exam = $data['exam'] ?? 0;
-
-            // Skip if subject maps to an inactive classroom
             $classroom = Classroom::where('code', $data['subject_id'])->first();
-            if ($classroom !== null) {
-                // Use policy to ensure user can manage this classroom (and it's active)
-                if (! auth()->user()->can('manage', $classroom)) {
-                    $skipped[] = $data['subject_id'];
-
-                    continue;
-                }
+            if ($classroom !== null && ! auth()->user()->can('manage', $classroom)) {
+                $skipped[] = $data['subject_id'];
+                continue;
             }
 
-            // Look up classroom-specific grading criteria weights
-            $quizWeight = 0.30;
-            $assignmentWeight = 0.30;
-            $examWeight = 0.40;
+            $components = $data['components'] ?? [];
+            $average = 0;
+            $criteria = $classroom ? \App\Models\ClassroomGradingCriteria::where('classroom_id', $classroom->id)->get() : collect();
 
-            if ($classroom !== null) {
-                $criteria = \App\Models\ClassroomGradingCriteria::where('classroom_id', $classroom->id)->get();
-                if ($criteria->isNotEmpty()) {
-                    $quizWeight = $criteria->where('component_name', 'Quiz')->first()?->weight / 100 ?? 0.30;
-                    $assignmentWeight = $criteria->where('component_name', 'Assignment')->first()?->weight / 100 ?? 0.30;
-                    $examWeight = $criteria->where('component_name', 'Exam')->first()?->weight / 100 ?? 0.40;
+            if ($criteria->isNotEmpty()) {
+                foreach ($criteria as $criterion) {
+                    $compKey = strtolower(str_replace(' ', '_', $criterion->component_name));
+                    $score = (float) ($components[$compKey] ?? 0);
+                    $average += ($score * ($criterion->weight / 100));
                 }
+            } else {
+                // Fallback to legacy structure if no criteria defined
+                $quiz = (float) ($data['quiz'] ?? 0);
+                $assignment = (float) ($data['assignment'] ?? 0);
+                $exam = (float) ($data['exam'] ?? 0);
+                $average = ($quiz * 0.3) + ($assignment * 0.3) + ($exam * 0.4);
+                $components = ['quiz' => $quiz, 'assignment' => $assignment, 'exam' => $exam];
             }
 
-            // Compute weighted average
-            $average = ($quiz * $quizWeight) + ($assignment * $assignmentWeight) + ($exam * $examWeight);
-
-            // Use GradingService constant for pass/fail determination
             $remarks = $average >= GradingService::PASSING_GRADE ? 'Pass' : 'Fail';
 
             Grade::updateOrCreate(
@@ -61,11 +53,13 @@ class GradeController extends Controller
                     'subject_id' => $data['subject_id'],
                 ],
                 [
-                    'quiz' => $quiz,
-                    'assignment' => $assignment,
-                    'exam' => $exam,
+                    'component_scores' => $components,
                     'average' => $average,
                     'remarks' => $remarks,
+                    // keep legacy columns updated for compatibility if they exist in components
+                    'quiz' => $components['quiz'] ?? ($data['quiz'] ?? 0),
+                    'assignment' => $components['assignment'] ?? ($data['assignment'] ?? 0),
+                    'exam' => $components['exam'] ?? ($data['exam'] ?? 0),
                 ]
             );
         }

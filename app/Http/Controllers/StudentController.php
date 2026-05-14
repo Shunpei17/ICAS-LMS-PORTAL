@@ -609,4 +609,33 @@ class StudentController extends Controller
 
         return view('student.attendance', compact('summary', 'records', 'courseBreakdown'));
     }
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'new_password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                'regex:/[a-z]/',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[^A-Za-z0-9]/'
+            ],
+        ], [
+            'new_password.regex' => 'The password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
+            'current_password.current_password' => 'The provided password does not match our records.',
+        ]);
+
+        $user = $request->user();
+        $user->update([
+            'password' => $request->new_password,
+            'force_password_reset' => false,
+        ]);
+
+        \App\Models\AuditTrail::log('Update', 'Security', 'Student updated their password.');
+
+        return back()->with('status', 'Password updated successfully.');
+    }
 }

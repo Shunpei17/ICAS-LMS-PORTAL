@@ -382,29 +382,21 @@ class AdminController extends Controller
             ->paginate(12)
             ->withQueryString();
 
-        $courseOptions = User::query()
-            ->where('role', 'student')
-            ->whereNotNull('course')
-            ->select('course')
+        $subjectOptions = FacultyAttendanceRecord::query()
+            ->whereNotNull('subject_code')
+            ->select('subject_code')
             ->distinct()
-            ->orderBy('course')
-            ->pluck('course')
+            ->orderBy('subject_code')
+            ->pluck('subject_code')
             ->all();
 
         $facultyOptions = User::query()
             ->where('role', 'faculty')
-            ->whereHas('facultyAttendanceRecords')
             ->orderBy('name')
             ->get(['id', 'name'])
-            ->map(function (User $faculty): array {
-                return [
-                    'id' => $faculty->id,
-                    'name' => $faculty->name,
-                ];
-            })
             ->all();
 
-        return view('admin.attendance', compact('summary', 'records', 'filters', 'activeFilters', 'courseOptions', 'facultyOptions'));
+        return view('admin.attendance', compact('summary', 'records', 'filters', 'activeFilters', 'courseOptions', 'facultyOptions', 'subjectOptions'));
     }
 
     public function exportAttendance(Request $request)
@@ -416,9 +408,10 @@ class AdminController extends Controller
         $records = $baseQuery->get()->map(function ($r) {
             return [
                 'student_name' => $r->student_name,
-                'student_course' => $r->studentUser->course ?? $r->student_course ?? '',
-                'student_academic_level' => $r->studentUser->academic_level ?? $r->student_academic_level ?? '',
+                'student_course' => $r->course_strand ?? '',
+                'student_academic_level' => $r->academic_level ?? '',
                 'faculty' => $r->faculty?->name ?? '',
+                'subject' => $r->subject_code ?? '',
                 'attendance_date' => $r->attendance_date?->format('Y-m-d') ?? '',
                 'status' => $r->status,
                 'notes' => $r->notes ?? '',
@@ -444,7 +437,7 @@ class AdminController extends Controller
                 return;
             }
             fwrite($out, "\xEF\xBB\xBF");
-            fputcsv($out, ['Student Name', 'Course', 'Academic Level', 'Faculty', 'Date', 'Status', 'Notes']);
+            fputcsv($out, ['Student Name', 'Course', 'Academic Level', 'Faculty', 'Subject', 'Date', 'Status', 'Notes']);
             foreach ($records as $row) {
                 fputcsv($out, array_values((array) $row));
             }
@@ -566,13 +559,11 @@ class AdminController extends Controller
         $overallAverage = $allFiltered->count() ? round($allFiltered->avg('grade_percent'), 1) : 0;
         $passingRate = $allFiltered->count() ? round(($allFiltered->where('grade_percent', '>=', 75)->count() / $allFiltered->count()) * 100) : 0;
         $studentsGraded = $allFiltered->pluck('user_id')->unique()->count();
-        $strandsMonitored = $allFiltered->pluck('user.strand')->filter()->unique()->count();
 
         $overview = [
             ['label' => 'Overall Average', 'value' => $overallAverage.'%', 'color' => 'emerald'],
             ['label' => 'Passing Rate', 'value' => $passingRate.'%', 'color' => 'sky'],
             ['label' => 'Students Graded', 'value' => (string) $studentsGraded, 'color' => 'slate'],
-            ['label' => 'Strands Monitored', 'value' => (string) $strandsMonitored, 'color' => 'slate'],
         ];
 
         return view('admin.grades', compact('courses', 'allGrades', 'subjectFilter', 'subjectOptions', 'academicLevelFilter', 'courseFilter', 'strandFilter', 'overview', 'statusFilter'));
@@ -585,14 +576,15 @@ class AdminController extends Controller
         return back()->with('status', 'Grade verified for '.($moduleRecord->user->name ?? 'Student'));
     }
 
-    public function exportGrades(Request $request): StreamedResponse
+    public function exportGrades(Request $request)
     {
         $subjectFilter = $request->query('subject');
         $academicLevelFilter = $request->query('academic_level');
         $courseFilter = $request->query('course');
         $strandFilter = $request->query('strand');
+        $format = $request->query('format', 'csv');
 
-        $records = StudentModuleRecord::query()
+        $query = StudentModuleRecord::query()
             ->with(['user:id,name,email,academic_level,course,strand'])
             ->whereNotNull('grade_percent')
             ->when(! $request->has('history'), function ($q) {
@@ -617,8 +609,21 @@ class AdminController extends Controller
                 });
             })
             ->orderBy('module_name')
-            ->orderBy('module_code')
-            ->get();
+            ->orderBy('module_code');
+
+        $records = $query->get();
+
+        if ($format === 'pdf') {
+            $scope = $subjectFilter ?: 'All Subjects';
+            if ($academicLevelFilter) $scope .= " | " . $academicLevelFilter;
+            
+            $pdf = Pdf::loadView('admin.exports.grades_pdf', [
+                'records' => $records,
+                'scope' => $scope
+            ])->setPaper('a4', 'landscape');
+            
+            return $pdf->download('official-academic-record-'.now()->format('Ymd-His').'.pdf');
+        }
 
         $filename = 'grade-generator-'.now()->format('Ymd-His').'.csv';
 
@@ -799,7 +804,7 @@ class AdminController extends Controller
     }
 
     /**
-    * @return array{search: string, status: string, faculty_user_id: string, academic_level: string, course: string, from_date: string, to_date: string}
+    * @return array{search: string, status: string, faculty_user_id: string, academic_level: string, course: string, subject: string, from_date: string, to_date: string}
      */
     private function resolveAttendanceFilters(Request $request): array
     {
@@ -812,6 +817,7 @@ class AdminController extends Controller
         $facultyUserId = trim((string) $request->query('faculty_user_id', ''));
         $academicLevel = trim((string) $request->query('academic_level', ''));
         $course = trim((string) $request->query('course', ''));
+        $subject = trim((string) $request->query('subject', ''));
 
         if ($facultyUserId !== '' && ! ctype_digit($facultyUserId)) {
             $facultyUserId = '';
@@ -823,6 +829,7 @@ class AdminController extends Controller
             'faculty_user_id' => $facultyUserId,
             'academic_level' => $academicLevel,
             'course' => $course,
+            'subject' => $subject,
             'from_date' => trim((string) $request->query('from_date', '')),
             'to_date' => trim((string) $request->query('to_date', '')),
         ];
@@ -843,24 +850,13 @@ class AdminController extends Controller
                 $query->where('student_name', 'like', '%'.$filters['search'].'%');
             })
             ->when($filters['academic_level'] !== '', function (Builder $query) use ($filters): void {
-                $level = $filters['academic_level'];
-                $query->whereExists(function ($q) use ($level) {
-                    $q->select(DB::raw(1))
-                        ->from('users')
-                        ->whereColumn('users.name', 'faculty_attendance_records.student_name')
-                        ->where('users.role', 'student')
-                        ->where('users.academic_level', $level);
-                });
+                $query->where('academic_level', $filters['academic_level']);
             })
             ->when($filters['course'] !== '', function (Builder $query) use ($filters): void {
-                $course = $filters['course'];
-                $query->whereExists(function ($q) use ($course) {
-                    $q->select(DB::raw(1))
-                        ->from('users')
-                        ->whereColumn('users.name', 'faculty_attendance_records.student_name')
-                        ->where('users.role', 'student')
-                        ->where('users.course', $course);
-                });
+                $query->where('course_strand', $filters['course']);
+            })
+            ->when($filters['subject'] !== '', function (Builder $query) use ($filters): void {
+                $query->where('subject_code', $filters['subject']);
             })
             ->when($filters['status'] !== '', function (Builder $query) use ($filters): void {
                 $query->where('status', $filters['status']);
@@ -1142,14 +1138,16 @@ class AdminController extends Controller
 
         // Handle photo upload
         if ($request->hasFile('profile_photo')) {
-            // Delete old photo if exists
-            if ($admin->profile_photo && Storage::disk('public')->exists($admin->profile_photo)) {
-                Storage::disk('public')->delete($admin->profile_photo);
-            }
-            $validated['profile_photo'] = $request->file('profile_photo')->store('profile-photos', 'public');
-        } else {
-            unset($validated['profile_photo']);
-        }
+            $file = $request->file('profile_photo');
+            $admin->profile_image_blob = file_get_contents($file->getRealPath());
+            $admin->profile_image_mime = $file->getMimeType();
+            $admin->profile_photo = 'stored_in_db';
+            
+            // Mark for update (admin->update will handle the others, but we set blob directly)
+            $admin->save();
+        } 
+        
+        unset($validated['profile_photo']);
 
         $admin->update($validated);
 
@@ -1159,18 +1157,30 @@ class AdminController extends Controller
     public function updatePassword(Request $request): RedirectResponse
     {
         $request->validate([
-            'current_password' => 'required|string',
-            'password' => 'required|string|min:8|confirmed',
+            'current_password' => ['required', 'current_password'],
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                // Complexity: 1 uppercase, 1 lowercase, 1 digit, 1 special char
+                'regex:/[a-z]/',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[^A-Za-z0-9]/'
+            ],
+        ], [
+            'password.regex' => 'The password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
+            'current_password.current_password' => 'The provided password does not match our records.',
         ]);
 
-        $user = Auth::user();
+        $user = $request->user();
 
-        if (!Hash::check($request->current_password, $user->password)) {
-            return back()->withErrors(['current_password' => 'The provided password does not match our records.']);
-        }
-
+        // Note: We do NOT use Hash::make() here because the User model 
+        // has 'password' => 'hashed' cast, which handles hashing automatically.
         $user->update([
-            'password' => Hash::make($request->password)
+            'password' => $request->password,
+            'force_password_reset' => false,
         ]);
 
         AuditTrail::log('Update', 'Settings', 'Admin updated their own password');

@@ -85,175 +85,14 @@ class FacultyController extends Controller
         return view('faculty.dashboard', compact('stats', 'courses'));
     }
 
-    public function students(): View
+    public function students()
     {
-        $subjects = [
-            [
-                'slug' => 'math301',
-                'code' => 'MATH301',
-                'name' => 'Advanced Mathematics',
-                'units' => 3,
-                'schedule' => 'Mon, Wed, Fri — 9:00 AM',
-                'description' => 'Covers calculus, linear algebra, and differential equations.',
-                'enrolled' => 28,
-                'color' => 'emerald',
-            ],
-            [
-                'slug' => 'phy201',
-                'code' => 'PHY201',
-                'name' => 'Physics I',
-                'units' => 5,
-                'schedule' => 'Tue, Thu — 10:00 AM',
-                'description' => 'Mechanics, kinematics, thermodynamics, and wave motion.',
-                'enrolled' => 24,
-                'color' => 'sky',
-            ],
-            [
-                'slug' => 'hist201',
-                'code' => 'HIST201',
-                'name' => 'World History',
-                'units' => 3,
-                'schedule' => 'Mon, Wed — 2:00 PM',
-                'description' => 'Survey of world civilizations from antiquity to the modern era.',
-                'enrolled' => 30,
-                'color' => 'amber',
-            ],
-            [
-                'slug' => 'eng101',
-                'code' => 'ENG101',
-                'name' => 'English Composition',
-                'units' => 3,
-                'schedule' => 'Fri — 1:00 PM',
-                'description' => 'Academic writing, critical thinking, and research skills.',
-                'enrolled' => 22,
-                'color' => 'violet',
-            ],
-        ];
-
-        return view('faculty.students', compact('subjects'));
+        return redirect()->route('faculty.classrooms');
     }
 
-    public function subjectShow(string $slug): View
+    public function subjectShow(string $slug)
     {
-        $allSubjects = [
-            'math301' => [
-                'slug' => 'math301', 'code' => 'MATH301', 'name' => 'Advanced Mathematics',
-                'units' => 3, 'schedule' => 'Mon, Wed, Fri — 9:00 AM',
-                'description' => 'Covers calculus, linear algebra, and differential equations.',
-                'enrolled' => 28, 'color' => 'emerald',
-                'topics' => [
-                    [
-                        'title' => 'Unit 1: Limits and Continuity',
-                        'posts' => [
-                            ['type' => 'material', 'title' => 'Course Syllabus',              'body' => 'Full syllabus for MATH301. Please read before our first class.',         'date' => 'Sep 1',  'icon' => 'doc'],
-                            ['type' => 'material', 'title' => 'Lecture Notes — Limits',       'body' => 'Complete notes from the first lecture covering limit definitions.',        'date' => 'Sep 3',  'icon' => 'doc'],
-                            ['type' => 'assignment', 'title' => 'Problem Set 1',               'body' => 'Solve exercises 1–20 from Chapter 2. Due next Monday.',                  'date' => 'Sep 5',  'icon' => 'assign'],
-                        ],
-                    ],
-                    [
-                        'title' => 'Unit 2: Derivatives',
-                        'posts' => [
-                            ['type' => 'material', 'title' => 'Lecture Slides — Derivatives', 'body' => 'Slides covering rules of differentiation (product, chain, quotient).',   'date' => 'Sep 10', 'icon' => 'doc'],
-                            ['type' => 'material', 'title' => 'Video: Chain Rule Explained',  'body' => 'Watch this 12-minute video before the next class session.',               'date' => 'Sep 12', 'icon' => 'video'],
-                            ['type' => 'assignment', 'title' => 'Problem Set 2',               'body' => 'Exercises 1–30 from Chapter 3. Show complete solutions.',                'date' => 'Sep 14', 'icon' => 'assign'],
-                            ['type' => 'quiz',     'title' => 'Quiz 1 — Derivatives',         'body' => 'Online quiz covering Units 1 & 2. 30 minutes. Closes Sep 18 11:59 PM.', 'date' => 'Sep 16', 'icon' => 'quiz'],
-                        ],
-                    ],
-                    [
-                        'title' => 'Unit 3: Integration',
-                        'posts' => [
-                            ['type' => 'material', 'title' => 'Lecture Notes — Integration',  'body' => 'Antiderivatives, Riemann sums, and the Fundamental Theorem of Calculus.', 'date' => 'Sep 22', 'icon' => 'doc'],
-                            ['type' => 'material', 'title' => 'Integration Formula Sheet',    'body' => 'Printable formula reference for common integrals.',                       'date' => 'Sep 24', 'icon' => 'doc'],
-                            ['type' => 'assignment', 'title' => 'Problem Set 3',               'body' => 'Integration exercises. Due Oct 1.',                                       'date' => 'Sep 26', 'icon' => 'assign'],
-                        ],
-                    ],
-                ],
-            ],
-            'phy201' => [
-                'slug' => 'phy201', 'code' => 'PHY201', 'name' => 'Physics I',
-                'units' => 5, 'schedule' => 'Tue, Thu — 10:00 AM',
-                'description' => 'Mechanics, kinematics, thermodynamics, and wave motion.',
-                'enrolled' => 24, 'color' => 'sky',
-                'topics' => [
-                    [
-                        'title' => 'Unit 1: Kinematics',
-                        'posts' => [
-                            ['type' => 'material',  'title' => 'Physics I Syllabus',           'body' => 'Course requirements and grading policy.',                                'date' => 'Sep 1',  'icon' => 'doc'],
-                            ['type' => 'material',  'title' => 'Lecture: Motion in 1D',        'body' => 'Displacement, velocity, acceleration — definitions and equations.',      'date' => 'Sep 3',  'icon' => 'doc'],
-                            ['type' => 'material',  'title' => 'Video: Projectile Motion',     'body' => 'Pre-class viewing required. ~15 minutes.',                               'date' => 'Sep 5',  'icon' => 'video'],
-                            ['type' => 'assignment', 'title' => 'Lab Report 1',                 'body' => 'Free-fall experiment lab report. Follow the template provided.',         'date' => 'Sep 8',  'icon' => 'assign'],
-                        ],
-                    ],
-                    [
-                        'title' => 'Unit 2: Newton\'s Laws',
-                        'posts' => [
-                            ['type' => 'material',  'title' => 'Lecture Slides — Forces',     'body' => 'Free body diagrams, net force, and Newton\'s 3 laws.',                  'date' => 'Sep 15', 'icon' => 'doc'],
-                            ['type' => 'quiz',      'title' => 'Quiz 1 — Kinematics',         'body' => 'Covers Unit 1 entirely. 25 minutes. Timed.',                             'date' => 'Sep 17', 'icon' => 'quiz'],
-                            ['type' => 'assignment', 'title' => 'Problem Set: Forces',         'body' => 'Newton\'s law problems. Show all working.',                              'date' => 'Sep 20', 'icon' => 'assign'],
-                        ],
-                    ],
-                ],
-            ],
-            'hist201' => [
-                'slug' => 'hist201', 'code' => 'HIST201', 'name' => 'World History',
-                'units' => 3, 'schedule' => 'Mon, Wed — 2:00 PM',
-                'description' => 'Survey of world civilizations from antiquity to the modern era.',
-                'enrolled' => 30, 'color' => 'amber',
-                'topics' => [
-                    [
-                        'title' => 'Unit 1: Ancient Civilizations',
-                        'posts' => [
-                            ['type' => 'material', 'title' => 'Course Overview & Syllabus',   'body' => 'Course structure, reading list, and assessment details.',                 'date' => 'Sep 1',  'icon' => 'doc'],
-                            ['type' => 'material', 'title' => 'Reading: Mesopotamia',         'body' => 'Chapter 1 of the textbook — Sumer, Babylon, and Akkad.',                'date' => 'Sep 3',  'icon' => 'doc'],
-                            ['type' => 'assignment', 'title' => 'Essay: Rise of Civilization', 'body' => '500-word essay on the key factors that led to early civilizations.',     'date' => 'Sep 10', 'icon' => 'assign'],
-                        ],
-                    ],
-                    [
-                        'title' => 'Unit 2: Classical Empires',
-                        'posts' => [
-                            ['type' => 'material', 'title' => 'Lecture: The Roman Empire',    'body' => 'Rise, expansion, and fall of Rome. Includes primary sources.',           'date' => 'Sep 17', 'icon' => 'doc'],
-                            ['type' => 'quiz',     'title' => 'Quiz: Ancient World',          'body' => 'Covers Units 1 and early Unit 2. 20 questions.',                         'date' => 'Sep 22', 'icon' => 'quiz'],
-                        ],
-                    ],
-                ],
-            ],
-            'eng101' => [
-                'slug' => 'eng101', 'code' => 'ENG101', 'name' => 'English Composition',
-                'units' => 3, 'schedule' => 'Fri — 1:00 PM',
-                'description' => 'Academic writing, critical thinking, and research skills.',
-                'enrolled' => 22, 'color' => 'violet',
-                'topics' => [
-                    [
-                        'title' => 'Unit 1: Academic Writing Basics',
-                        'posts' => [
-                            ['type' => 'material',  'title' => 'Syllabus & Writing Guide',    'body' => 'Course outline and the ICAS Academic Writing Style Guide.',               'date' => 'Sep 1',  'icon' => 'doc'],
-                            ['type' => 'material',  'title' => 'Paragraph Structure',         'body' => 'Slides: Topic sentence, supporting details, and concluding sentence.',   'date' => 'Sep 5',  'icon' => 'doc'],
-                            ['type' => 'assignment', 'title' => 'Draft 1: Descriptive Essay',  'body' => '3-paragraph descriptive essay. Submit via portal.',                      'date' => 'Sep 12', 'icon' => 'assign'],
-                        ],
-                    ],
-                    [
-                        'title' => 'Unit 2: Research & Citation',
-                        'posts' => [
-                            ['type' => 'material',  'title' => 'APA Citation Guide',          'body' => 'How to cite books, websites, and journals in APA 7th edition.',          'date' => 'Sep 19', 'icon' => 'doc'],
-                            ['type' => 'assignment', 'title' => 'Annotated Bibliography',      'body' => 'Annotate 5 sources on a topic of your choice. Due Sep 30.',              'date' => 'Sep 22', 'icon' => 'assign'],
-                            ['type' => 'quiz',      'title' => 'Quiz: Citation Formats',      'body' => '15 questions on APA formatting. Open-notes. 30 minutes.',                'date' => 'Sep 26', 'icon' => 'quiz'],
-                        ],
-                    ],
-                ],
-            ],
-        ];
-
-        $subject = $allSubjects[$slug] ?? null;
-
-        abort_if($subject === null, 404);
-
-        $enrolledStudents = [
-            ['id' => 1, 'initials' => 'MS', 'name' => 'Miguel Santos', 'email' => 'miguel.s@school.edu', 'grade' => '92%', 'status' => 'Excellent'],
-            ['id' => 2, 'initials' => 'AR', 'name' => 'Andrea Reyes', 'email' => 'andrea.r@school.edu', 'grade' => '88%', 'status' => 'Good'],
-            ['id' => 3, 'initials' => 'CD', 'name' => 'Carlo Dela Cruz', 'email' => 'carlo.c@school.edu', 'grade' => '75%', 'status' => 'Needs Improvement'],
-        ];
-
-        return view('faculty.subject-show', compact('subject', 'enrolledStudents'));
+        return redirect()->route('faculty.classrooms');
     }
 
     public function studentShow(string $id): View
@@ -339,12 +178,20 @@ class FacultyController extends Controller
             ->pluck('student_class')
             ->all();
 
-        $gradeSubjectFilter = $request->query('grade_subject', '');
-        $gradeSearch = trim((string) $request->query('grade_search', ''));
+        $gradeSubjects = $facultyClassrooms->pluck('code')->all();
+
+        // If no subject selected, default to the first classroom if available
+        if (!$gradeSubjectFilter && !empty($gradeSubjects)) {
+            $gradeSubjectFilter = $gradeSubjects[0];
+        }
+
+        // Get criteria for selected subject
+        $activeClassroom = $facultyClassrooms->where('code', $gradeSubjectFilter)->first();
+        $activeCriteria = $activeClassroom ? $activeClassroom->gradingCriteria : collect();
 
         $studentsWithGrades = collect();
         if ($tab === 'grades') {
-            // Get all students enrolled in the faculty's modules, or just all students for simplicity
+            // Get students enrolled in this classroom or all students for now (simplification)
             $studentsQuery = User::where('role', 'student');
             if ($gradeSearch) {
                 $studentsQuery->where('name', 'like', '%'.$gradeSearch.'%');
@@ -358,20 +205,22 @@ class FacultyController extends Controller
             $existingGrades = $gradeQuery->get()->keyBy('student_id');
 
             foreach ($students as $student) {
+                $existingGrade = $existingGrades->get($student->id);
+                $componentScores = $existingGrade?->component_scores ?? [];
+                
                 $studentsWithGrades->push([
                     'student_id' => $student->id,
                     'student_name' => $student->name,
-                    'subject_id' => $gradeSubjectFilter ?: 'MATH301', // Default subject
-                    'quiz' => $existingGrades->has($student->id) ? $existingGrades[$student->id]->quiz : null,
-                    'assignment' => $existingGrades->has($student->id) ? $existingGrades[$student->id]->assignment : null,
-                    'exam' => $existingGrades->has($student->id) ? $existingGrades[$student->id]->exam : null,
-                    'average' => $existingGrades->has($student->id) ? $existingGrades[$student->id]->average : null,
-                    'remarks' => $existingGrades->has($student->id) ? $existingGrades[$student->id]->remarks : null,
+                    'subject_id' => $gradeSubjectFilter,
+                    'component_scores' => $componentScores,
+                    'quiz' => $existingGrade?->quiz,
+                    'assignment' => $existingGrade?->assignment,
+                    'exam' => $existingGrade?->exam,
+                    'average' => $existingGrade?->average,
+                    'remarks' => $existingGrade?->remarks,
                 ]);
             }
         }
-
-        $gradeSubjects = ['MATH301', 'PHY201', 'HIST201', 'ENG101'];
 
         // Load classrooms with their grading criteria for the criteria config section
         /** @var User $faculty */
@@ -381,7 +230,7 @@ class FacultyController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('faculty.grades', compact('summary', 'records', 'filters', 'activeFilters', 'classOptions', 'tab', 'studentsWithGrades', 'gradeSubjects', 'gradeSubjectFilter', 'gradeSearch', 'facultyClassrooms'));
+        return view('faculty.grades', compact('summary', 'records', 'filters', 'activeFilters', 'classOptions', 'tab', 'studentsWithGrades', 'gradeSubjects', 'gradeSubjectFilter', 'gradeSearch', 'facultyClassrooms', 'activeCriteria', 'activeClassroom'));
     }
 
     public function storeAttendanceRecord(StoreFacultyAttendanceRecordRequest $request): RedirectResponse
@@ -432,21 +281,28 @@ class FacultyController extends Controller
             // capture student snapshot data (course, academic_level) if mapped
             $studentCourse = null;
             $studentLevel = null;
+            
+            $student = null;
             if (! empty($data['student_user_id'])) {
-                $user = User::find($data['student_user_id']);
-                if ($user !== null) {
-                    $studentCourse = $user->course;
-                    $studentLevel = $user->academic_level;
-                }
+                $student = User::find($data['student_user_id']);
+            } else {
+                // Try finding by name (inexact but helpful for the current UI)
+                $student = User::where('name', $data['student_name'])->where('role', 'student')->first();
+            }
+
+            if ($student !== null) {
+                $studentCourse = $student->course;
+                $studentLevel = $student->academic_level;
             }
 
             $settings = new \App\Services\SystemSettingsService();
             FacultyAttendanceRecord::query()->create(array_merge([
                 'faculty_user_id' => Auth::id(),
-                'student_course' => $studentCourse,
-                'student_academic_level' => $studentLevel,
+                'course_strand' => $studentCourse,
+                'academic_level' => $studentLevel,
                 'academic_year' => $settings->get('academic_year'),
                 'semester' => $settings->get('current_semester'),
+                'student_user_id' => $student?->id,
             ], $data));
 
             return redirect()
@@ -483,12 +339,14 @@ class FacultyController extends Controller
                 return;
             }
 
-            fputcsv($output, ['Student Name', 'Class', 'Date', 'Status']);
+            fputcsv($output, ['Student Name', 'Class/Subject', 'Course/Strand', 'Academic Level', 'Date', 'Status']);
 
             foreach ($records as $record) {
                 fputcsv($output, [
                     $record->student_name,
                     $record->student_class,
+                    $record->course_strand,
+                    $record->academic_level,
                     $record->attendance_date?->format('Y-m-d') ?? '',
                     $record->status,
                 ]);
@@ -769,6 +627,44 @@ class FacultyController extends Controller
         $criteria->delete();
 
         return redirect()->back()->with('status', 'Criterion removed.');
+    }
+
+    public function settings(): View
+    {
+        return view('faculty.settings', [
+            'pageDescription' => 'Manage your account security and preferences.',
+        ]);
+    }
+
+    public function updatePassword(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'new_password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                // Requirements: 1 uppercase, 1 lowercase, 1 digit, 1 special char
+                'regex:/[a-z]/',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[^A-Za-z0-9]/', // At least one special character
+            ],
+        ], [
+            'new_password.regex' => 'The password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.',
+            'current_password.current_password' => 'The provided password does not match our records.',
+        ]);
+
+        $user = $request->user();
+        $user->update([
+            'password' => $request->new_password,
+            'force_password_reset' => false,
+        ]);
+
+        \App\Models\AuditTrail::log('Update', 'Security', 'Faculty member updated their password.');
+
+        return back()->with('status', 'Password updated successfully.');
     }
 
     private function authorizeClassroom(Classroom $classroom): void

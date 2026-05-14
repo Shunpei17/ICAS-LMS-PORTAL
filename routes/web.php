@@ -5,6 +5,7 @@ use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassroomController;
 use App\Http\Controllers\FacultyController;
+use App\Http\Controllers\FileController;
 use App\Http\Controllers\GradeController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\MaterialController;
@@ -55,6 +56,7 @@ Route::middleware('auth', 'force.password.change')->group(function () {
     })->name('dashboard');
 
     Route::get('/announcements', [AnnouncementController::class, 'index'])->name('announcements.index');
+    Route::get('/file/{type}/{id}', [FileController::class, 'show'])->name('file.show');
 
     // Force password change routes (accessible even with force_password_change flag)
     Route::get('/password/change', function () {
@@ -90,6 +92,7 @@ Route::middleware('auth', 'force.password.change')->group(function () {
         Route::get('/schedule', [StudentController::class, 'schedule'])->name('schedule');
         Route::get('/notifications', [StudentController::class, 'notifications'])->name('notifications');
         Route::get('/settings', [StudentController::class, 'settings'])->name('settings');
+        Route::post('/settings/password', [StudentController::class, 'updatePassword'])->name('settings.password');
     });
 
     Route::prefix('faculty')->middleware('role:faculty')->name('faculty.')->group(function () {
@@ -125,6 +128,15 @@ Route::middleware('auth', 'force.password.change')->group(function () {
         // Classroom grading criteria management
         Route::post('/classrooms/{classroom}/grading-criteria', [FacultyController::class, 'storeGradingCriteria'])->name('classrooms.grading-criteria.store');
         Route::delete('/classrooms/{classroom}/grading-criteria/{criteria}', [FacultyController::class, 'deleteGradingCriteria'])->name('classrooms.grading-criteria.destroy');
+
+        // Topics and Materials management
+        Route::post('/classrooms/{classroom}/topics', [ClassroomController::class, 'storeTopic'])->name('classrooms.topics.store');
+        Route::delete('/classrooms/{classroom}/topics/{topic}', [ClassroomController::class, 'destroyTopic'])->name('classrooms.topics.destroy');
+        Route::post('/classrooms/{classroom}/materials', [ClassroomController::class, 'storeMaterial'])->name('classrooms.materials.store');
+        Route::delete('/classrooms/{classroom}/materials/{material}', [ClassroomController::class, 'destroyMaterial'])->name('classrooms.materials.destroy');
+
+        Route::get('/settings', [FacultyController::class, 'settings'])->name('settings');
+        Route::post('/settings/password', [FacultyController::class, 'updatePassword'])->name('settings.password');
     });
 
     // NOTE: Removed duplicate global route `grades.export.csv` to prefer

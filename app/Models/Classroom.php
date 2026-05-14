@@ -59,6 +59,16 @@ class Classroom extends Model
         return $this->hasMany(ClassroomGradingCriteria::class);
     }
 
+    public function topics(): HasMany
+    {
+        return $this->hasMany(Topic::class)->orderBy('order');
+    }
+
+    public function materials(): HasMany
+    {
+        return $this->hasMany(Material::class);
+    }
+
     /**
      * Count of enrolled students.
      */

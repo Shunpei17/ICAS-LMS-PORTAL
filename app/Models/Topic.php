@@ -5,19 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Material extends Model
+class Topic extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'classroom_id',
-        'topic_id',
-        'title',
-        'body',
-        'type',
-        'file_path',
-        'original_filename',
-        'icon',
+        'name',
+        'order',
     ];
 
     public function classroom()
@@ -25,12 +20,8 @@ class Material extends Model
         return $this->belongsTo(Classroom::class);
     }
 
-    public function topic()
+    public function materials()
     {
-        return $this->belongsTo(Topic::class);
+        return $this->hasMany(Material::class)->orderBy('created_at');
     }
-
-    protected $casts = [
-        'topic_index' => 'integer',
-    ];
 }

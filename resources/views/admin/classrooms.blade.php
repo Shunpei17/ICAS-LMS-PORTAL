@@ -41,10 +41,6 @@
                     @if($search || $statusFilter)
                         <a href="{{ route('admin.classrooms') }}" class="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition">Clear</a>
                     @endif
-                    <a href="{{ route('admin.classrooms.create') }}" class="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        Add a Classroom
-                    </a>
                 </form>
             </div>
 
@@ -58,9 +54,8 @@
                                 <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Faculty</th>
                                 <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide">Schedule</th>
                                 <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide text-center">Students</th>
-                                <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide text-center">Avg Grade</th>
-                                <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide text-center">Attendance</th>
                                 <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide text-center">Status</th>
+                                <th class="px-5 py-3.5 font-semibold text-slate-500 text-xs uppercase tracking-wide text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-100">
@@ -85,16 +80,6 @@
                                         </span>
                                     </td>
                                     <td class="px-5 py-4 text-center">
-                                        <span class="font-bold {{ $room['avg_grade'] !== '—' ? 'text-emerald-600' : 'text-slate-300' }}">
-                                            {{ $room['avg_grade'] }}
-                                        </span>
-                                    </td>
-                                    <td class="px-5 py-4 text-center">
-                                        <span class="font-bold {{ $room['attendance_rate'] !== '—' ? 'text-sky-600' : 'text-slate-300' }}">
-                                            {{ $room['attendance_rate'] }}
-                                        </span>
-                                    </td>
-                                    <td class="px-5 py-4 text-center">
                                         <span class="inline-flex rounded-full px-3 py-1 text-xs font-bold capitalize
                                             {{ $room['status'] === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">
                                             {{ ucfirst($room['status']) }}
@@ -110,7 +95,7 @@
                                                     {{ $room['status'] === 'active' ? 'Deactivate' : 'Activate' }}
                                                 </button>
                                             </form>
-                                            <button data-id="{{ $room['id'] }}" data-name="{{ $room['name'] }}" class="assign-faculty rounded-md bg-sky-600 text-white px-3 py-1 text-xs font-semibold hover:bg-sky-700 transition">Assign</button>
+                                            <button data-id="{{ $room['id'] }}" data-name="{{ $room['name'] }}" class="assign-faculty rounded-md bg-sky-600 text-white px-3 py-1 text-xs font-semibold hover:bg-sky-700 transition">Change Faculty</button>
                                             <div class="relative inline-block text-left">
                                                 <button type="button" class="export-btn rounded-md bg-slate-800 text-white px-3 py-1 text-xs font-semibold hover:bg-slate-900 transition">Export ▾</button>
                                                 <div class="export-menu hidden absolute right-0 mt-2 z-10 w-36 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
@@ -147,8 +132,9 @@
         
         {{-- Assign Faculty Modal (hidden) --}}
         <div id="assignModal" class="hidden fixed inset-0 z-50 grid place-items-center bg-black/40">
-            <div class="bg-white rounded-2xl p-6 w-96">
-                <h3 class="text-lg font-bold mb-3">Assign Faculty to <span id="modalClassName" class="font-semibold"></span></h3>
+            <div class="bg-white rounded-2xl p-6 w-96 shadow-2xl">
+                <h3 class="text-lg font-bold mb-3 text-slate-900">Change Faculty for <span id="modalClassName" class="text-green-600"></span></h3>
+                <p class="text-xs text-slate-500 mb-4 uppercase tracking-widest font-bold">Reassignment Module</p>
                 <form id="assignForm" method="POST" action="">
                     @csrf
                     <div class="mb-3">

@@ -46,14 +46,14 @@
 
                         @if($announcement->attachment_path)
                             <div class="mt-4">
-                                <a
-                                    href="{{ asset('storage/' . $announcement->attachment_path) }}"
-                                    target="_blank"
-                                    rel="noopener"
-                                    class="inline-flex rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
-                                >
-                                    Open Attachment
-                                </a>
+                                    <a
+                                        href="{{ route('file.show', ['type' => 'announcement_attachment', 'id' => $announcement->id]) }}"
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="inline-flex rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"
+                                    >
+                                        Open Attachment
+                                    </a>
                             </div>
                         @endif
                     </article>
@@ -88,7 +88,7 @@
                     </button>
                 </div>
 
-                <form action="{{ route('faculty.announcements.store') }}" method="POST">
+                <form action="{{ route('faculty.announcements.store') }}" method="POST" enctype="multipart/form-data">
                     @csrf
                     <div class="space-y-4">
                         <div>
@@ -99,6 +99,11 @@
                         <div>
                             <label for="content" class="mb-1 block text-sm font-semibold text-slate-700">Content/Description</label>
                             <textarea id="content" name="content" rows="4" required class="block w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-green-500 focus:ring-green-500"></textarea>
+                        </div>
+
+                        <div>
+                            <label for="attachment" class="mb-1 block text-sm font-semibold text-slate-700">Attachment (Optional)</label>
+                            <input type="file" id="attachment" name="attachment" class="block w-full rounded-xl border border-slate-200 p-2 text-sm focus:border-green-500 focus:ring-green-500">
                         </div>
                     </div>
 

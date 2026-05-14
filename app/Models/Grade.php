@@ -12,8 +12,13 @@ class Grade extends Model
         'quiz',
         'assignment',
         'exam',
+        'component_scores',
         'average',
         'remarks',
+    ];
+
+    protected $casts = [
+        'component_scores' => 'array',
     ];
 
     public function student()

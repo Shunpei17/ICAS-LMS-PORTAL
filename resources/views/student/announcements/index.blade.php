@@ -39,7 +39,7 @@
                         @if($announcement->attachment_path)
                             <div class="mt-4">
                                 <a
-                                    href="{{ asset('storage/' . $announcement->attachment_path) }}"
+                                    href="{{ route('file.show', ['type' => 'announcement_attachment', 'id' => $announcement->id]) }}"
                                     target="_blank"
                                     rel="noopener"
                                     class="inline-flex rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 transition hover:bg-sky-100"

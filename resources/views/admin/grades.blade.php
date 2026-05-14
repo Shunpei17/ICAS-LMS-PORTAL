@@ -55,6 +55,7 @@
                     <input type="hidden" name="subject" value="{{ $subjectFilter }}">
                     <select name="format" class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white">
                         <option value="csv">Excel / CSV</option>
+                        <option value="pdf">Official PDF Record</option>
                     </select>
                     <button type="submit" class="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-800 transition">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
@@ -66,7 +67,7 @@
     </section>
 
     {{-- Overall Stats --}}
-    <div class="grid gap-4 sm:grid-cols-4">
+    <div class="grid gap-4 sm:grid-cols-3">
         @foreach($overview as $o)
             @php $cc=match($o['color'] ?? 'slate'){
                 'emerald'=>['bg-emerald-50','border-emerald-200','text-emerald-700'],'sky'=>['bg-sky-50','border-sky-200','text-sky-700'],default=>['bg-white','border-slate-200','text-slate-900']
@@ -164,10 +165,12 @@
                     @forelse($allGrades as $grade)
                     <tr class="hover:bg-slate-50 transition-colors">
                         <td class="px-5 py-3.5 font-semibold text-slate-900">{{ $grade->user->name ?? 'Unknown' }}</td>
-                        <td class="px-5 py-3.5 text-slate-400">
+                        <td class="px-5 py-3.5 text-slate-600 font-medium">
                             @if(str_contains($grade->user->academic_level ?? '', 'Senior High School'))
+                                <span class="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-[10px] uppercase font-bold mr-1">Strand</span>
                                 {{ $grade->user->strand ?? 'N/A' }}
                             @else
+                                <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] uppercase font-bold mr-1">Course</span>
                                 {{ $grade->user->course ?? 'N/A' }}
                             @endif
                         </td>

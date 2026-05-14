@@ -48,22 +48,42 @@
     <div x-show="tab === 'password'" x-cloak>
         <section class="rounded-3xl bg-white border border-slate-200 shadow-sm p-6">
             <h3 class="text-lg font-bold text-slate-900 mb-5">Change Password</h3>
-            <form class="space-y-5 max-w-md">
-                @foreach(['Current Password','New Password','Confirm New Password'] as $label)
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">{{ $label }}</label>
-                        <input type="password" class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent" placeholder="••••••••">
-                    </div>
-                @endforeach
-                <div class="rounded-2xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-800">
-                    <p class="font-semibold mb-1">Password Requirements</p>
-                    <ul class="space-y-0.5 text-xs list-disc list-inside">
-                        <li>Minimum 8 characters</li>
-                        <li>At least one uppercase letter</li>
-                        <li>At least one number or symbol</li>
+            @if(session('status'))
+                <div class="mb-6 rounded-2xl bg-emerald-50 border border-emerald-100 p-4 flex items-center gap-3 text-emerald-700 text-sm font-medium">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    {{ session('status') }}
+                </div>
+            @endif
+
+            <form method="POST" action="{{ route('student.settings.password') }}" class="space-y-5 max-w-md">
+                @csrf
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Current Password</label>
+                    <input type="password" name="current_password" required
+                           class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent @error('current_password') border-rose-500 @enderror" placeholder="••••••••">
+                    @error('current_password') <p class="mt-1 text-xs text-rose-500 font-medium">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">New Password</label>
+                    <input type="password" name="new_password" required
+                           class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent @error('new_password') border-rose-500 @enderror" placeholder="••••••••">
+                    @error('new_password') <p class="mt-1 text-xs text-rose-500 font-medium">{{ $message }}</p> @enderror
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Confirm New Password</label>
+                    <input type="password" name="new_password_confirmation" required
+                           class="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-green-400 focus:border-transparent" placeholder="••••••••">
+                </div>
+                
+                <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4 text-sm text-slate-600">
+                    <p class="font-bold text-xs uppercase tracking-widest text-slate-400 mb-2">Password Requirements</p>
+                    <ul class="space-y-1 text-xs">
+                        <li class="flex items-center gap-2"><svg class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Minimum 8 characters</li>
+                        <li class="flex items-center gap-2"><svg class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> At least one uppercase letter</li>
+                        <li class="flex items-center gap-2"><svg class="w-3.5 h-3.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> At least one number & special character</li>
                     </ul>
                 </div>
-                <button type="submit" class="rounded-2xl bg-green-600 px-6 py-3 text-sm font-semibold text-white hover:bg-green-700 transition">Update Password</button>
+                <button type="submit" class="rounded-2xl bg-green-600 px-8 py-3 text-sm font-bold text-white hover:bg-green-700 transition shadow-lg shadow-green-200/50">Update Password</button>
             </form>
         </section>
     </div>

@@ -20,11 +20,13 @@ class FacultyAttendanceRecord extends Model
         'student_user_id',
         'student_name',
         'student_class',
+        'course_strand',
+        'academic_level',
         'subject_code',
-        'student_course',
-        'student_academic_level',
         'attendance_date',
         'status',
+        'academic_year',
+        'semester',
     ];
 
     public function studentUser()
