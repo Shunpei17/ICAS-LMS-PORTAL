@@ -17,6 +17,8 @@ class UserSeeder extends Seeder
                 'name' => 'Ramon Dela Cruz',
                 'password' => 'password123',
                 'role' => 'admin',
+                'status' => 'active',
+                'force_password_reset' => false,
             ],
         );
 
@@ -26,6 +28,8 @@ class UserSeeder extends Seeder
                 'name' => 'Prof. Liza Santos',
                 'password' => 'password123',
                 'role' => 'faculty',
+                'status' => 'active',
+                'force_password_reset' => false,
             ],
         );
 
@@ -35,6 +39,11 @@ class UserSeeder extends Seeder
                 'name' => 'Juan Miguel Reyes',
                 'password' => 'password123',
                 'role' => 'student',
+                'status' => 'active',
+                'force_password_reset' => false,
+                'enrollment_type' => 'Old Student',
+                'academic_level' => 'College',
+                'course' => 'BSIT',
             ],
         );
 

@@ -34,6 +34,10 @@ php artisan view:clear 2>/dev/null || true
 echo "🗄️  Running database migrations..."
 php artisan migrate --force --no-interaction
 
+# ---- Seed demo users ----
+echo "🌱 Seeding demo users..."
+php artisan db:seed --force --no-interaction
+
 # ---- Cache configuration AFTER migrations ----
 echo "⚡ Caching configuration..."
 php artisan config:cache
